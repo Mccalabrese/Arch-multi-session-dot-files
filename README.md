@@ -8,17 +8,17 @@ This is a personal repo, not a beginner's guide. It assumes you know what you're
 
 The Philosophy: Why Rust?
 
-You'll see all my helper scripts are written in Rust. I'm not a "Rust-acean," but I am a pragmatist.
+* You'll see all my helper scripts are written in Rust. I'm not a "Rust-acean," but I am a pragmatist.
 
-    Why not Python? Because Python is the absolute worst. It's a slow, dependency-hell nightmare. I don't trust its supply chain, and honestly, I just don't vibe with it. I'll take C-style syntax any day.
+Why not Python? Because Python is the absolute worst. It's a slow, dependency-hell nightmare. I don't trust its supply chain, and honestly, I just don't vibe with it. I'll take C-style syntax any day.
 
-    Why not shell scripts? My old scripts were a Rube Goldberg machine of pgrep, jq, sed, awk, and cat all piped together. They were fragile, slow, and "worked like crap."
+Why not shell scripts? My old scripts were a Rube Goldberg machine of pgrep, jq, sed, awk, and cat all piped together. They were fragile, slow, and "worked like crap."
 
-    But why not Zig? I love Zig. It's the future. But the sad reality is that its API changes so fast, I can't even learn the language before a pacman -Syu breaks everything I've written.
+But why not Zig? I love Zig. It's the future. But the sad reality is that its API changes so fast, I can't even learn the language before a pacman -Syu breaks everything I've written.
 
-    So, Rust. It gives me the C-like syntax and performance I want, with a stable ecosystem (cargo) that actually works. It's the best tool for the job right now. If the senior kernel devs hate rust, I stand with them, I make no comment or express no opinion on what should or should not be in the kernel.
+So, Rust. It gives me the C-like syntax and performance I want, with a stable ecosystem (cargo) that actually works. It's the best tool for the job right now. If the senior kernel devs hate rust, I stand with them, I make no comment or express no opinion on what should or should not be in the kernel.
 
-    Why ghostty? It is the best. 
+Why ghostty? It is the best. *
 
 ## 1. Core Dependencies (pacman)
 
