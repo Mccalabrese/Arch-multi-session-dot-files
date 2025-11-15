@@ -1,0 +1,12 @@
+[package]
+name = "waybar-switcher"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0"
+dirs = "5.0"
+serde = { version = "1.0.228", features = ["derive"] }
+shellexpand = "3.1.1"
+sysinfo = "0.36.1"
+toml = "0.9.8"

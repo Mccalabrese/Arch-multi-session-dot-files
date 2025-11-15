@@ -1,0 +1,42 @@
+[
+  {
+    "include": [
+      "$HOME/.config/waybar/Modules",
+      "$HOME/.config/waybar/ModulesWorkspaces",
+      "$HOME/.config/waybar/ModulesCustom",
+      "$HOME/.config/waybar/ModulesGroups",
+      "$HOME/.config/waybar/UserModules"
+    ],
+    "layer": "top",
+    "exclusive": true,
+    "passthrough": false,
+    "position": "bottom",
+    "spacing": 5,
+    "fixed-center": true,
+    "height": 0,
+    "margin-left": 8,
+    "margin-right": 8,
+    "modules-left": [
+      "clock"
+    ],
+    "modules-center": [
+      "custom/sway_workspace_number",
+      "wlr/taskbar"
+    ],
+    "modules-right": [
+      "battery",
+      "custom/cycle_wall",
+      "pulseaudio",
+      "custom/menu",
+      "custom/cloudflared",
+      "tray",
+      "custom/power"
+    ],
+    "custom/sway_workspace_number": {
+      "interval": 2,
+      "exec": "$HOME/.cargo/bin/sway-workspace",
+      "format": "{}",
+      "tooltip": false
+    }
+  }
+]

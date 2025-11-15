@@ -1,0 +1,294 @@
+// ~/.config/niri/config.kdl
+// Main Niri configuration file, incorporating user preferences
+
+// Input device configuration
+input {
+    keyboard {
+        xkb {
+            layout "us" // Set your layout if different
+            // options "..." // Add options like caps:escape if desired
+        }
+        numlock // Enable numlock on startup
+    }
+    touchpad {
+        tap // Enable tap-to-click
+        natural-scroll // Enable natural scrolling
+        dwt // Add this line based on UserSettings.conf
+        middle-emulation // Add this line based on UserSettings.conf
+        // accel-speed ... // Adjust if needed
+    }
+    mouse {
+        natural-scroll // Enable natural scrolling
+        // accel-speed ... // Adjust if needed
+    }
+    trackpoint {
+        natural-scroll // Enable natural scrolling
+        // accel-speed ... // Adjust if needed
+        middle-emulation // Add this line based on UserSettings.conf
+    }
+    // warp-mouse-to-focus // Keep commented unless desired
+    // focus-follows-mouse // Keep commented unless desired
+}
+
+// Output configuration (Translated from monitors.conf)
+output "eDP-1" {
+    position x=3440 y=0
+    scale 1.5
+}
+output "DP-2" { // Assuming DP-2 is your primary at 0,0
+    position x=0 y=0
+    scale 1.0
+}
+output "DP-3" { // Adjust position relative to DP-2
+    position x=0 y=0 // Example, change if it's beside DP-2
+    scale 1.0
+}
+output "DP-4" { // Adjust position relative to others
+    position x=0 y=0 // Example
+    scale 1.0
+}
+
+// Layout Settings (Translated from UserSettings.conf & Hyprland defaults)
+layout {
+    gaps 6 // Inner gaps
+    struts { // Define struts for Waybar or other panels if needed
+        top 0
+        bottom 0
+        left 0
+        right 0
+    }
+    default-column-width { proportion 0.5; } // Default window width
+    border { // Niri has borders, not just decorations
+        off // Start with borders off, enable if desired
+        width 2 // Set border width if enabled
+        // active-color "#..." // Set colors if enabled
+        // inactive-color "#..."
+    }
+    focus-ring {// Niri uses a focus ring
+        width 2 // Set width (default is 4)
+        active-color "#cba6f7" // Example color
+        inactive-color "#45475a" // Example color
+    }
+    // shadow { // Keep default shadow settings unless you want to customize
+    //     on
+    //     softness 30
+    //     spread 5
+    //     offset x=0 y=5
+    //     color "#0007"
+    // }
+}
+
+// Startup Apps (Corrected Syntax)
+// Many of these might already be started by XDG Autostart
+spawn-at-startup "swww-daemon" "--namespace" "niri"
+spawn-at-startup "$HOME/.cargo/bin/wp-daemon"
+// spawn-at-startup "/path/to/your/WallpaperAutoChange.sh" "/path/to/wallpapers"
+
+spawn-at-startup "dbus-update-activation-environment" "--systemd" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP"
+spawn-at-startup "systemctl" "--user" "import-environment" "WAYLAND_DISPLAY" "XDG_CURRENT_DESKTOP"
+spawn-at-startup "/usr/lib/polkit-gnome/polkit-gnome-authentication-agent-1"
+spawn-at-startup "/usr/lib/geoclue-2.0/demos/agent"
+
+spawn-at-startup "nm-applet" "--indicator"
+spawn-at-startup "swaync"
+spawn-at-startup "waybar-switcher"
+spawn-at-startup "udiskie" "--tray" "--no-automount"
+// Use spawn-sh-at-startup for commands needing shell features (like && or redirection)
+spawn-at-startup "wl-paste" "--type" "text" "--watch" "cliphist" "store"
+spawn-at-startup "wl-paste" "--type" "image" "--watch" "cliphist" "store"
+
+spawn-at-startup "xwayland-satellite"
+// --- IDLE MANAGEMENT (replaces hypridle, calls hyprlock) ---
+spawn-sh-at-startup r#"
+iDIR="$HOME/.config/swaync/images/ja.png"; export iDIR;
+swayidle -w \
+    timeout 200 'brightnessctl set 0%' \
+        resume 'brightnessctl set 60%' \
+    timeout 600 'pidof hyprlock || hyprlock &' \
+    timeout 630 'wlr-randr --output eDP-1 --off; wlr-randr --output DP-2 --off; wlr-randr --output DP-3 --off; wlr-randr --output DP-4 --off' \
+        resume 'wlr-randr --output eDP-1 --on; wlr-randr --output DP-2 --on; wlr-randr --output DP-3 --on; wlr-randr --output DP-4 --on' \
+    timeout 1200 'systemctl suspend' \
+    before-sleep 'pidof hyprlock || hyprlock &'
+"#
+// Hotkey Overlay
+hotkey-overlay {
+    skip-at-startup // Disable the initial help popup
+}
+
+// prefer-no-csd // Uncomment if you prefer server-side decorations
+
+// Screenshot Path
+screenshot-path "~/Pictures/Screenshots/Screenshot from %Y-%m-%d %H-%M-%S.png"
+
+// Animations (Simple fade, keep default or disable)
+animations {
+    // off // Uncomment to disable
+    // slowdown 1.0 // Default speed
+}
+
+// Window Rules
+window-rule { // Firefox PiP Floating
+    match app-id=r#"firefox$"# title="^Picture-in-Picture$"
+    open-floating true
+}
+window-rule { // Authentication dialogs
+    match title="(?i)Authentication Required"
+    open-floating true // Niri might float dialogs anyway
+}
+window-rule {
+    match app-id="firefox"
+    // The ^ means the title must *start with* "Sign in"
+    match title=r#"^Sign in"#
+    exclude title=r#"— Mozilla Firefox"#
+    exclude title=r#"Mozilla Firefox"# 
+    open-floating true
+}
+window-rule {
+    draw-border-with-background false
+    clip-to-geometry true
+}
+window-rule {
+    match is-focused=false 
+    opacity 0.75
+}
+window-rule {
+    match is-focused=true
+    opacity 0.88
+}
+cursor {
+    xcursor-theme "Adwaita"
+    xcursor-size 24
+}
+
+// Binds (Default + User Keybinds with Corrected Syntax)
+// Binds (Default + User Keybinds with Corrected Syntax)
+binds {
+
+    Mod+T hotkey-overlay-title="Open a Terminal: ghostty" { spawn "ghostty"; }
+    Mod+D hotkey-overlay-title="Run an Application: Rofi" { spawn-sh "pkill rofi || true && rofi -show drun -modi drun,filebrowser,run,window"; }
+    Super+Alt+L hotkey-overlay-title="Lock the Screen: hyprlock" { spawn-sh "pidof hyprlock || hyprlock &"; }
+
+    // Volume/Brightness/Mic
+    XF86AudioRaiseVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+"; }
+    XF86AudioLowerVolume allow-when-locked=true { spawn-sh "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-"; }
+    XF86AudioMute allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle"; }
+    XF86AudioMicMute allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"; }
+    XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "set" "5%+"; }
+    XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "set" "5%-"; }
+
+    // Overview
+    Mod+O repeat=false { toggle-overview; }
+    Mod+W { spawn "$HOME/.cargo/bin/wp-select"; }
+    // Close Window
+    Mod+Q repeat=false { close-window; }
+    //suspend
+    Mod+Alt+S hotkey-overlay-title="Lock and Suspend" {
+       spawn-sh "pidof hyprlock >/dev/null || hyprlock & sleep 0.5; systemctl suspend"
+    }
+
+    // Focus Movement
+    Mod+Left  { focus-column-left; }
+    Mod+Down  { focus-window-down; }
+    Mod+Up    { focus-window-up; }
+    Mod+Right { focus-column-right; }
+    Mod+H     { focus-column-left; }
+    Mod+J     { focus-window-down; }
+    Mod+K     { focus-window-up; }
+    Mod+L     { focus-column-right; }
+    Mod+Comma  hotkey-overlay-title="Stack/Unstack window" { consume-or-expel-window-right; }
+    Mod+Period hotkey-overlay-title="Stack/Unstack window" { consume-or-expel-window-right; }
+    Mod+BracketLeft  hotkey-overlay-title="Stack window from left"  { consume-or-expel-window-left; }
+    Mod+BracketRight hotkey-overlay-title="Unstack window to left"  { consume-or-expel-window-left; }
+
+    // Window Movement
+    Mod+Ctrl+Left  { move-column-left; }
+    Mod+Ctrl+Down  { move-window-down; }
+    Mod+Ctrl+Up    { move-window-up; }
+    Mod+Ctrl+Right { move-column-right; }
+    Mod+Ctrl+H     { move-column-left; }
+    Mod+Ctrl+J     { move-window-down; }
+    Mod+Ctrl+K     { move-window-up; }
+    Mod+Ctrl+L     { move-column-right; }
+
+    // Focus Monitor
+    Mod+Shift+Left  { focus-monitor-left; }
+    Mod+Shift+Down  { focus-monitor-down; }
+    Mod+Shift+Up    { focus-monitor-up; }
+    Mod+Shift+Right { focus-monitor-right; }
+    Mod+Shift+H     { focus-monitor-left; }
+    Mod+Shift+J     { focus-monitor-down; }
+    Mod+Shift+K     { focus-monitor-up; }
+    Mod+Shift+L     { focus-monitor-right; }
+
+    // Move Column to Monitor
+    Mod+Shift+Ctrl+Left  { move-column-to-monitor-left; }
+    Mod+Shift+Ctrl+Down  { move-column-to-monitor-down; }
+    Mod+Shift+Ctrl+Up    { move-column-to-monitor-up; }
+    Mod+Shift+Ctrl+Right { move-column-to-monitor-right; }
+    Mod+Shift+Ctrl+H     { move-column-to-monitor-left; }
+    Mod+Shift+Ctrl+J     { move-column-to-monitor-down; }
+    Mod+Shift+Ctrl+K     { move-column-to-monitor-up; }
+    Mod+Shift+Ctrl+L     { move-column-to-monitor-right; }
+
+    // Focus Workspace
+    Mod+Page_Down { focus-workspace-down; }
+    Mod+Page_Up   { focus-workspace-up; }
+
+    // Move Column to Workspace
+    Mod+Ctrl+Page_Down { move-column-to-workspace-down; }
+    Mod+Ctrl+Page_Up   { move-column-to-workspace-up; }
+
+    // Switch to Workspace by number
+    Mod+1 { focus-workspace 1; }
+    Mod+2 { focus-workspace 2; }
+    Mod+3 { focus-workspace 3; }
+    Mod+4 { focus-workspace 4; }
+    Mod+5 { focus-workspace 5; }
+    Mod+6 { focus-workspace 6; }
+    Mod+7 { focus-workspace 7; }
+    Mod+8 { focus-workspace 8; }
+    Mod+9 { focus-workspace 9; }
+
+    // Move Column to Workspace by number
+    Mod+Ctrl+1 { move-column-to-workspace 1; }
+    Mod+Ctrl+2 { move-column-to-workspace 2; }
+    Mod+Ctrl+3 { move-column-to-workspace 3; }
+    Mod+Ctrl+4 { move-column-to-workspace 4; }
+    Mod+Ctrl+5 { move-column-to-workspace 5; }
+    Mod+Ctrl+6 { move-column-to-workspace 6; }
+    Mod+Ctrl+7 { move-column-to-workspace 7; }
+    Mod+Ctrl+8 { move-column-to-workspace 8; }
+    Mod+Ctrl+9 { move-column-to-workspace 9; }
+
+    // Column Width / Window Height
+    Mod+R { switch-preset-column-width; }
+    Mod+Shift+R { switch-preset-window-height; }
+    Mod+F { maximize-column; }
+    Mod+Shift+F { fullscreen-window; }
+
+    // Floating Toggle
+    Mod+Space { toggle-window-floating; }
+
+    // Screenshots
+    Print { screenshot; }
+    Ctrl+Print { screenshot-screen; }
+    Alt+Print { screenshot-window; } // Alt is Mod1
+
+    // User Keybinds (Corrected Syntax)
+    Mod+B { spawn "xdg-open" "https://"; } // Browser
+    Control+Alt+T { spawn "ghostty"; } // Terminal
+    Mod+E { spawn "thunar"; } // File Manager
+
+    // User Scripts (Corrected Syntax)
+    Mod+Shift+O hotkey-overlay-title="Show Keybinds" { show-hotkey-overlay; }
+    Mod+Alt+R { spawn "$HOME/.config/hypr/scripts/Refresh.sh"; }
+    Mod+Alt+E { spawn "$HOME/.config/hypr/scripts/RofiEmoji.sh"; }
+    Mod+S { spawn "$HOME/.config/hypr/scripts/RofiSearch.sh"; }
+    Mod+Alt+V { spawn "$HOME/.config/hypr/scripts/ClipManager.sh"; }
+    Mod+Control+Alt+B { spawn "pkill" "-SIGUSR1" "waybar"; }
+    Mod+Alt+C { spawn "$HOME/.config/hypr/UserScripts/RofiCalc.sh"; }
+    Mod+Shift+P { spawn "$HOME/.cargo/bin/kb-launcher"; }
+    // Exit Niri
+    Mod+Shift+E { quit; }
+    Ctrl+Alt+Delete { quit; } // Alt is Mod1
+}

@@ -1,0 +1,16 @@
+[package]
+name = "waybar-weather"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0"
+reqwest = { version = "0.12", features = ["json"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+regex = "1"
+dirs = "5.0"
+chrono = "0.4"
+toml = "0.9.8"
+shellexpand = "3.1.1"

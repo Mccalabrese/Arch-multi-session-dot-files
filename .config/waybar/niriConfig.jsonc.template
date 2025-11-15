@@ -1,0 +1,82 @@
+[
+  {
+    "include": [
+      "$HOME/.config/waybar/Modules",
+      "$HOME/.config/waybar/ModulesCustom",
+      "$HOME/.config/waybar/ModulesGroups",
+      "$HOME/.config/waybar/UserModules"
+    ],
+    "layer": "top",
+    "exclusive": true,
+    "passthrough": false,
+    "position": "top",
+    "spacing": 3,
+    "fixed-center": true,
+    "margin-top": 1,
+    "margin-left": 8,
+    "margin-right": 8,
+    "modules-left": [
+      "cpu",
+      "temperature",
+      "memory",
+      "disk"
+    ],
+    "modules-center": [
+      "idle_inhibitor",
+      "clock",
+      "custom/hint",
+      "custom/weather"
+    ],
+    "modules-right": [
+      "battery",
+      "backlight",
+      "custom/updater",
+      "custom/cycle_wall",
+      "pulseaudio",
+      "pulseaudio#microphone"
+    ]
+  },
+  {
+    "include": [
+      "$HOME/.config/waybar/Modules",
+      "$HOME/.config/waybar/ModulesWorkspaces",
+      "$HOME/.config/waybar/ModulesCustom",
+      "$HOME/.config/waybar/ModulesGroups",
+      "$HOME/.config/waybar/UserModules"
+    ],
+    "layer": "top",
+    "exclusive": true,
+    "passthrough": false,
+    "position": "bottom",
+    "spacing": 5,
+    "fixed-center": true,
+    "height": 0,
+    "margin-left": 8,
+    "margin-right": 8,
+    "modules-left": [
+      "custom/menu",
+      "custom/browser",
+      "custom/settings",
+      "custom/file_manager",
+      "custom/tty",
+      "custom/vnc",
+      "custom/ytm",
+      "custom/ledger",
+      "custom/slack",
+      "custom/vscode",
+      "custom/zoom",
+      "custom/discord"
+    ],
+    "modules-center": [
+      "wlr/taskbar"
+    ],
+    "modules-right": [
+      "hyprland/window",
+      "custom/cloudflared",
+      "tray",
+      "custom/lock",
+      "group/notify",
+      "custom/power"
+    ]
+  }
+]

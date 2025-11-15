@@ -1,0 +1,91 @@
+# $HOME/.config/rust-dotfiles/config.toml
+[global]
+pager = "bat --paging=always --style=plain"
+terminal = "ghostty"
+# -------------------------------
+# [kb_launcher]
+# Settings for our keybind launcher
+# -------------------------------
+[kb_launcher.compositor_args]
+hyprland = ["--class", "KeybindCheatSheetApp"]
+sway = ["--app-id", "KeybindCheatSheetApp"]
+niri = []
+default = []
+
+[[kb_launcher.sheet]]
+name = "Neovim"
+file = "~/.config/nvim/keybinds_nvim.txt"
+
+[[kb_launcher.sheet]]
+name = "Hyprland"
+file = "~/.config/hypr/keybinds_hyprland.txt"
+# -------------------------------
+# [waybar_weather]
+# Settings for our weather module
+# We can FINALLY get the API key out of the Waybar config!
+# -------------------------------
+[waybar_weather]
+# We'll refactor waybar-weather to read this key
+owm_api_key = "YOUR_SECRET_OWM_KEY_HERE"
+# -------------------------------
+# [wallpaper_manager]
+# Settings for our wallpaper daemon/selector
+# -------------------------------
+[wallpaper_manager]
+wallpaper_dir = "~/Pictures/Wallpapers"
+swww_params = [
+    "--transition-fps", "60",
+    "--transition-type", "any",
+    "--transition-duration", "2",
+    "--transition-bezier", ".43,1.19,1,.4"
+]
+swaybg_cache_file = "swaybg_last_wallpaper"
+hyprland_refresh_script = "~/.config/hypr/scripts/Refresh.sh"
+cache_file = "~/.cache/wallpapers.json"
+rofi_config_path = "~/.config/rofi/config-wallpaper.rasi"
+rofi_theme_override = "element-icon { size: 20%; }"
+
+# In ~/.config/rust-dotfiles/config.toml
+
+[update_check]
+# The command to run. We use a list for command and args.
+command = ["checkupdates"]
+# The file to cache the last known count
+cache_file = "~/.cache/update-check.json"
+# Icon to show if check fails but cache is available
+stale_icon = "⚠"
+# Icon to show if check AND cache fail
+error_icon = "!"
+
+[updater]
+# The command and its arguments
+update_command = ["yay", "-Syu"]
+# Full paths to your icons (using ~)
+icon_success = "~/.config/swaync/images/ja.png"
+icon_error = "~/.config/swaync/images/error.png"
+# The title for the terminal window
+window_title = "System Update"
+
+[waybar_switcher]
+# Where the active config should be copied to
+target_file = "/tmp/waybar-config.jsonc"
+
+# Source files for each session
+niri_config = "~/.config/waybar/niriConfig.jsonc"
+hyprland_config = "~/.config/waybar/hyprConfig.jsonc"
+sway_config = "~/.config/waybar/swayConfig.jsonc"
+
+[cloudflare_toggle]
+# For cf-status.rs
+text_on = "󰅟"  # Example: "ON" or an icon
+class_on = "on"
+text_off = "󰅞" # Example: "OFF" or an icon
+class_off = "off"
+
+# For cf-toggle.rs (root)
+resolv_content_on = "nameserver 127.0.0.1"
+resolv_content_off = "nameserver 1.1.1.1\nnameserver 1.0.0.1"
+
+# For cf-toggle.rs (user)
+bar_process_name = "waybar"
+bar_signal_num = 10 # The '10' from 'SIGRTMIN() + 10'

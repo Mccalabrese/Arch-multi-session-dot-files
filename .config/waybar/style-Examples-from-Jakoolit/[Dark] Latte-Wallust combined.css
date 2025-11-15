@@ -1,0 +1,242 @@
+/* --- Cleaned CSS - Attempting 108%/Bold Default, 100%/Normal Tray --- */
+
+@define-color white      #F2F2F2;
+@define-color black      #000000;
+@define-color text       #FFFFFF;
+@define-color lightgray  #686868;
+@define-color darkgray   #353535;
+@define-color yellow #E5C07B;
+
+@define-color foreground #FFFDF7;
+@define-color background #2E596F;
+@define-color background-alt rgba(46,89,111,0.25);
+@define-color cursor #6E6662;
+ 
+@define-color color0 #FFFBF3;
+@define-color color1 #5F7D8D;
+@define-color color2 #66767F;
+@define-color color3 #6D6F70;
+@define-color color4 #736862;
+@define-color color5 #7A6154;
+@define-color color6 #815A46;
+@define-color color7 #394B54;
+@define-color color8 #597583;
+@define-color color9 #7FA7BB;
+@define-color color10 #889EA9;
+@define-color color11 #919496;
+@define-color color12 #9A8B83;
+@define-color color13 #A38170;
+@define-color color14 #AC785E;
+@define-color color15 #B6CBD5; 
+
+@define-color transparent rgba(1, 1, 1, 0.5);
+@define-color teal-trans rgba(1, 117, 84, 0.5);
+@define-color cyan rgba(53, 140, 169, 1);
+
+@define-color background-module   @transparent;
+@define-color border-color        @color12;
+@define-color button-color        @color11;
+@define-color button-hover        @color13;
+
+
+* {
+    font-family: "JetBrainsMono Nerd Font", "Font Awesome 6 Free Solid", "Font Awesome 6 Brands", sans-serif;
+    min-height: 0;
+    font-feature-settings: '"zero", "ss01", "ss02", "ss03", "ss04", "ss05", "cv31"';
+    /* Base font size/weight removed */
+}
+
+window#waybar {
+    background: transparent;
+    border-radius: 0px;
+    color: @foreground; /* Default color from import */
+}
+
+window#waybar.hidden {
+    opacity: 0;
+}
+
+tooltip {
+    background: #1e1e2e;
+    border-radius: 12px;
+    border-width: 1px;
+    border-style: solid;
+    border-color: @border-color;
+    color: #ffffff;
+}
+
+tooltip label {
+    color: #ffffff;
+}
+
+/*----- Module Groups (Layout/Background ONLY) -----*/
+.modules-left,
+.modules-center,
+.modules-right {
+    background-color: @background-module;
+    border-radius: 15px;
+    border-bottom: 2px solid @border-color;
+    padding: 2px 4px 0px 4px;
+    margin: 2px 5px;
+    /* Font styles removed */
+}
+
+/*----- Default Module Font Style (Apply to MOST modules by ID) -----*/
+/* >>> Carefully checked list based on your config <<< */
+#cpu, #temperature, #memory, #disk, #idle_inhibitor, #clock, #custom-hint,
+#custom-weather, #battery, #backlight, #custom-updater, #custom-cycle_wall,
+#pulseaudio, #pulseaudio-microphone, /* Added microphone */
+#custom-menu, #custom-settings, #custom-file_manager, #custom-tty,
+#custom-vnc, #custom-vscode, #custom-zoom, #custom-slack, #custom-ledger, #custom-discord. /* Added custom */
+#custom-browser, #custom-ytm, /* Added custom */
+#taskbar, /* For wlr/taskbar */
+#workspaces, /* For hyprland/workspaces#rw (usually uses #workspaces ID) */
+#window, /* For hyprland/window */
+#custom-lock, #custom-power,
+/* Add any other module IDs from your config that need this style, EXCEPT #tray */
+/* Note: Styling groups like 'group/notify' requires different CSS (#group-notify or similar) */
+/* Note: Also omitting #network, #mpris etc. which were not in your config */
+#custom-updates, /* Assuming you might use this */
+#swaync /* Assuming you might use this */
+{
+    font-size: 100%;
+    font-weight: bold;
+}
+
+/*----- Tray Specific Override -----*/
+#tray {
+font-size: 100%;
+font-weight: normal;
+/* Keep padding/margin as they were */
+padding: 0 6px;
+margin: 0 3px;
+}
+
+
+/* ----- ALL OTHER STYLES (Colors, Padding, Borders, Buttons, etc.) ----- */
+/* ----- These should remain unchanged from your working 'colors' version --- */
+
+#workspaces {
+padding: 0px 1px;
+border-radius: 15px;
+border: 2px solid @border-color;
+font-style: normal; /* font-weight/size handled above */
+opacity: 0.8;
+color: #FFFFFF;
+}
+
+#taskbar button,
+#workspaces button {
+color: @color8;
+background: none;
+border: none;
+box-shadow: none;
+text-shadow: none;
+border-radius: 30px;
+padding: 0 4px;
+margin: 2px 3px;
+transition: all 0.3s ease;
+/* font size/weight will be inherited from parent (#workspaces/#taskbar) */
+}
+
+#taskbar button.active,
+#workspaces button.active {
+color: @foreground;
+background-color: @background-module;
+border-radius: 15px;
+padding: 0 8px;
+transition: all 0.3s ease;
+}
+
+#workspaces button.focused {
+color: #d8dee9;
+background-color: alpha(@foreground, 0.2);
+}
+
+#workspaces button.urgent {
+color: #11111b;
+background-color: @color1;
+border-radius: 10px;
+}
+
+#custom-niri_workspaces,
+#custom-sway_workspaces {
+  padding: 0px 10px; /* Add horizontal padding */
+  margin: 0px 5px; /* Add horizontal margin */
+  border-radius: 15px;
+  border: 2px solid @border-color;
+  font-style: normal;
+  font-weight: bold;
+  opacity: 0.8;
+  color: #FFFFFF;
+}
+
+
+#taskbar button:hover,
+#workspaces button:hover {
+color: #ffd700;
+background-color: alpha(@foreground, 0.1);
+border-radius: 10px;
+padding: 0 6px;
+transition: all 0.2s ease;
+}
+
+#backlight, #pulseaudio, #wireplumber, #network, #battery, #clock,
+#memory, #cpu, #disk, #temperature, #idle_inhibitor, #mpris,
+#custom-weather, #custom-power, #custom-menu, #window, #custom-cycle_wall,
+#custom-lock, #custom-hint, #custom-updates, #swaync,
+#mode, #taskbar, #workspaces,
+#custom-backlight, #custom-browser, #custom-cava_mviz, #custom-dot_update,
+#custom-file_manager, #custom-discord, #custom-keybinds, #custom-keyboard, #custom-light_dark,
+#custom-hypridle, #custom-playerctl, #custom-power_vertical, #custom-quit,
+#custom-reboot, #custom-settings, #custom-spotify, #custom-tty, #custom-updater
+{
+    padding: 0px 6px;
+    margin: 0 3px;
+}
+
+#temperature.critical {
+background-color: @color1;
+color: @background;
+}
+
+@keyframes blink {
+    to { opacity: 0.5; }
+}
+
+#backlight-slider slider, #pulseaudio-slider slider { /* ... keep slider styles ... */ }
+#backlight-slider trough, #pulseaudio-slider trough { /* ... keep slider styles ... */ }
+#backlight-slider highlight, #pulseaudio-slider highlight { /* ... keep slider styles ... */ }
+
+#pulseaudio.muted {
+color: @color9;
+text-decoration-line: line-through;
+}
+
+#window, #custom-cycle_wall, #idle_inhibitor, #memory, #custom-tty, #custom-settings, #custom-file_manager, #custom-browser, #custom-vnc, #custom-vscode, #custom-zoom, #custom-discord, #custom-slack, #custom-ledger, #custom-ytm { color: @color10; }
+#custom-power, #temperature, #backlight, #custom-weather { color: @color15; } /* Added clock color here */
+#custom-lock, #custom-hint, #battery, #pulseaudio, #cpu { color: @color12; }
+#custom-menu, #custom-updater, #disk { color: @color14; }
+
+#battery.critical:not(.charging) { color: @color1; animation-name: blink; animation-duration: 1.5s; animation-timing-function: ease-in-out; animation-iteration-count: infinite; animation-direction: alternate; }
+#battery.charging { color: @color2; }
+
+#custom-hypridle, #custom-lock, #idle_inhibitor { }
+#custom-hypridle.notactive, #idle_inhibitor.activated { }
+
+#clock {
+/* color: @color15; */ /* Moved color definition up */
+border-radius: 15px;
+border: 2px solid @border-color;
+}
+/* Remove #clock#2 rule if you don't have a second clock module named that */
+/* #clock#2 { color: #efe8f7; border: none; } */
+
+#custom-updates { color: @yellow; }
+#swaync { color: #ffd700; }
+
+/* Ensure slider styles are complete if you use them */
+#backlight-slider slider, #pulseaudio-slider slider { min-width: 0px; min-height: 0px; opacity: 0; background-image: none; border: none; box-shadow: none; }
+#backlight-slider trough, #pulseaudio-slider trough { min-width: 80px; min-height: 5px; border-radius: 5px; background-color: #22252a; }
+#backlight-slider highlight, #pulseaudio-slider highlight { min-height: 10px; border-radius: 5px; background-color: #ba5663; }
+

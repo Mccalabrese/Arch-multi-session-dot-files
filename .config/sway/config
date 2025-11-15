@@ -1,0 +1,165 @@
+# ~/.config/sway/config
+# Main Sway configuration file
+
+### Variables (Keep these from default, adjust if needed)
+set $mod Mod4
+set $left h
+set $down j
+set $up k
+set $right l
+set $term ghostty
+set $menu "wofi --show drun"
+
+### Sourcing User Config Files ###
+# Create these directories if they don't exist
+set $UserConfigs $HOME/.config/sway/UserConfigs
+include $UserConfigs/Startup_Apps.conf
+include $UserConfigs/UserKeybinds.conf
+include $UserConfigs/WindowRules.conf
+
+### Output configuration ###
+# Your monitor setup translated from monitors.conf
+output eDP-1 mode 3840x2160 position 3440 0 scale 2
+output DP-2 position 0 0 scale 1
+output DP-3 position 0 0 scale 1
+output DP-4 position 0 0 scale 1 
+
+### User Settings (Translated from UserSettings.conf) ###
+# Gaps
+gaps inner 2
+gaps outer 2
+
+# Borders
+default_border pixel 2
+# smart_borders on # Optional: Hides borders if only one window
+# Prevent redraws when idle (reduces GPU wakeups)
+output * max_render_time 3
+
+# Input Settings
+input * {
+    repeat_rate 30
+    repeat_delay 300
+    natural_scroll enabled
+    # accel_profile flat # or adaptive
+    # pointer_accel 0 # Adjust sensitivity via pointer_accel (-1 to 1)
+    xkb_layout us
+}
+input type:touchpad {
+    dwt enabled
+    natural_scroll enabled
+    tap enabled
+    middle_emulation enabled
+    # drag_lock disabled # Default is disabled
+}
+# input type:touchdevice { enabled false } # Uncomment if you have a touchscreen you want disabled
+
+# Misc Behavior
+workspace_auto_back_and_forth yes
+mouse_warping none
+# focus_on_window_activation focus # How focus behaves on new windows
+focus_follows_mouse no
+
+# XWayland
+xwayland disable
+
+### Default Keybindings (Keep from default, UserKeybinds.conf will override/add) ###
+# Basics:
+    bindsym $mod+Return exec $term
+    bindsym $mod+q kill
+    # bindsym $mod+d exec $menu # Commented out, your UserKeybinds.conf defines this
+    floating_modifier $mod normal
+    bindsym $mod+Shift+c reload
+    bindsym $mod+Shift+e exec swaynag -t warning -m 'You pressed the exit shortcut. Do you really want to exit sway? This will end your Wayland session.' -B 'Yes, exit sway' 'swaymsg exit'
+# Moving around:
+    bindsym $mod+$left focus left
+    bindsym $mod+$down focus down
+    bindsym $mod+$up focus up
+    bindsym $mod+$right focus right
+    bindsym $mod+Left focus left
+    bindsym $mod+Down focus down
+    bindsym $mod+Up focus up
+    bindsym $mod+Right focus right
+    bindsym $mod+Shift+$left move left
+    bindsym $mod+Shift+$down move down
+    bindsym $mod+Shift+$up move up
+    bindsym $mod+Shift+$right move right
+    bindsym $mod+Shift+Left move left
+    bindsym $mod+Shift+Down move down
+    bindsym $mod+Shift+Up move up
+    bindsym $mod+Shift+Right move right
+# Workspaces:
+    bindsym $mod+1 workspace number 1
+    bindsym $mod+2 workspace number 2
+    bindsym $mod+3 workspace number 3
+    bindsym $mod+4 workspace number 4
+    bindsym $mod+5 workspace number 5
+    bindsym $mod+6 workspace number 6
+    bindsym $mod+7 workspace number 7
+    bindsym $mod+8 workspace number 8
+    bindsym $mod+9 workspace number 9
+    bindsym $mod+0 workspace number 10
+    bindsym $mod+Shift+1 move container to workspace number 1
+    bindsym $mod+Shift+2 move container to workspace number 2
+    bindsym $mod+Shift+3 move container to workspace number 3
+    bindsym $mod+Shift+4 move container to workspace number 4
+    bindsym $mod+Shift+5 move container to workspace number 5
+    bindsym $mod+Shift+6 move container to workspace number 6
+    bindsym $mod+Shift+7 move container to workspace number 7
+    bindsym $mod+Shift+8 move container to workspace number 8
+    bindsym $mod+Shift+9 move container to workspace number 9
+    bindsym $mod+Shift+0 move container to workspace number 10
+# Layout stuff:
+    bindsym $mod+s+h splith
+    bindsym $mod+v splitv
+    bindsym $mod+s+t layout stacking
+    bindsym $mod+t layout tabbed
+    bindsym $mod+z layout toggle split
+    # bindsym $mod+f fullscreen # Commented out, your UserKeybinds.conf defines Shift+F
+    # bindsym $mod+Shift+space floating toggle # Commented out, your UserKeybinds.conf defines Space
+    # bindsym $mod+space focus mode_toggle # Commented out, your UserKeybinds.conf defines Space
+    bindsym $mod+a focus parent
+# Scratchpad:
+    bindsym $mod+Shift+minus move scratchpad
+    bindsym $mod+minus scratchpad show
+# Resizing containers:
+mode "resize" {
+    bindsym $left resize shrink width 10px
+    bindsym $down resize grow height 10px
+    bindsym $up resize shrink height 10px
+    bindsym $right resize grow width 10px
+    bindsym Left resize shrink width 10px
+    bindsym Down resize grow height 10px
+    bindsym Up resize shrink height 10px
+    bindsym Right resize grow width 10px
+    bindsym Return mode "default"
+    bindsym Escape mode "default"
+}
+bindsym $mod+c mode "resize" # Enter resize mode
+
+### Utilities (Keep media/brightness keys from default) ###
+    bindsym --locked XF86AudioMute exec wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle
+    bindsym --locked XF86AudioLowerVolume exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%-
+    bindsym --locked XF86AudioRaiseVolume exec wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+
+    bindsym --locked XF86AudioMicMute exec wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle
+    bindsym --locked XF86MonBrightnessDown exec brightnessctl set 5%-
+    bindsym --locked XF86MonBrightnessUp exec brightnessctl set 5%+
+    # bindsym Print exec grim # Your UserKeybinds probably define screenshot commands via scripts
+
+### Status Bar ###
+# Disable the default swaybar, Waybar will be started by Startup_Apps.conf
+# bar {
+#     position top
+#     status_command while date +'%Y-%m-%d %X'; do sleep 1; done
+#     colors {
+#         statusline #ffffff
+#         background #323232
+#         inactive_workspace #32323200 #32323200 #5c5c5c
+#     }
+# }
+
+### Idle and Lock (Placeholders - Configure Later) ###
+# exec swayidle ...
+# set $lock exec swaylock ...
+
+### Include system-wide snippets if needed ###
+# include /etc/sway/config.d/*

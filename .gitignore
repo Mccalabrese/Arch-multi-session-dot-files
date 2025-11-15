@@ -1,6 +1,10 @@
 /sysScripts/**/target/
 /.config/rust-dotfiles/config.toml
+/.config/hypr/OLD_GRAVEYARD/
 *.cache
 **/*.cache
 .cache/
 /sysScripts/**/swaybg_last_wallpaper
+/.config/waybar/hyprConfig.jsonc
+/.config/waybar/swayConfig.jsonc
+/.config/waybar/niriConfig.jsonc
