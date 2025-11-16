@@ -199,6 +199,7 @@ binds {
     Mod+Alt+S hotkey-overlay-title="Lock and Suspend" {
         spawn-sh "pidof hyprlock >/dev/null || hyprlock & sleep 0.5; systemctl suspend"
     }
+    Mod+Alt+R { spawn-sh "pkill swaync && swaync"; }
 
     // Focus Movement
     Mod+Left  { focus-column-left; }
@@ -294,8 +295,6 @@ binds {
     Mod+E { spawn "thunar"; } // File Manager
 
     // User Scripts (Corrected Syntax)
-    Mod+Shift+O hotkey-overlay-title="Show Keybinds" { show-hotkey-overlay; }
-    Mod+Alt+R { spawn "$HOME/.config/hypr/scripts/Refresh.sh"; }
     Mod+Alt+E { spawn "$HOME/.config/hypr/scripts/RofiEmoji.sh"; }
     Mod+S { spawn "$HOME/.config/hypr/scripts/RofiSearch.sh"; }
     Mod+Alt+V { spawn "$HOME/.config/hypr/scripts/ClipManager.sh"; }

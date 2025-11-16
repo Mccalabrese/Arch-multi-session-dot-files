@@ -61,6 +61,11 @@
 * XF86MonBrightnessDown- Brightness Down (5%-)
 * XF86Sleep            - Suspend System
 
+## 🖥️ Screenshots
+* Print           - Screenshot (Fullscreen)
+* $mainMod + Print  - Screenshot (Area)
+* Alt + Print     - Screenshot (Active Window)
+
 ---
 ## 📜 Legacy Scripts (To Be Rewritten)
 * $mainMod + Alt + R - Refresh (Waybar, etc.)
@@ -68,10 +73,5 @@
 * $mainMod + Alt + V - Rofi (Clipboard Manager)
 * $mainMod + Alt + C - Rofi (Calculator)
 * $mainMod + Ctrl + O - Toggle Active Window Opacity
-* $mainMod + Print      - Screenshot (Now)
-* $mainMod + Shift + S - Screenshot (Swappy)
-* $mainMod + Shift + Prt - Screenshot (Area)
-* $mainMod + Ctrl + Prt  - Screenshot (in 5 sec)
-* Alt + Print           - Screenshot (Active Window)
 * $mainMod + Alt + Scroll  - Zoom In / Out
 * XF86Rfkill            - Toggle Airplane Mode

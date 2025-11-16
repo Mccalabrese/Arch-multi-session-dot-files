@@ -49,3 +49,8 @@
 * $mod + S       - Rofi (Google Search)
 * $mod + Alt + V - Rofi (Clipboard Manager)
 * $mod + Alt + C - Rofi (Calculator)
+
+## 🖥️ Screenshots
+* Print         - Screenshot (Fullscreen)
+* $mod + Print  - Screenshot (Area)
+* Alt + Print   - Screenshot (Active Window)
