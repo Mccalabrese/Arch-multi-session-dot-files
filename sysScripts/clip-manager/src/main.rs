@@ -46,11 +46,11 @@ fn get_cliphist_list() -> Result<String> {
 
 // Runs "cliphist decode" on a selection and copies it to clipboard
 fn decode_and_copy(selection: &str) -> Result<()> {
-    // 1. Spawn `cliphist decode`. We will get its stdout.
+    // 1. Spawn `cliphist decode`
     let mut cliphist_child = Command::new("cliphist")
         .arg("decode")
         .stdin(Stdio::piped())
-        .stdout(Stdio::piped()) // <-- We will pipe this output
+        .stdout(Stdio::piped()) 
         .spawn()
         .context("Failed to spawn 'cliphist decode'")?;
 
@@ -65,9 +65,8 @@ fn decode_and_copy(selection: &str) -> Result<()> {
         .context("Failed to get stdout from cliphist")?;
 
     // 4. Spawn `wl-copy` and tell it to use cliphist's stdout as its stdin
-    //    This is the Rust equivalent of:  `... | wl-copy`
     let wl_copy_status = Command::new("wl-copy")
-        .stdin(cliphist_stdout) // <-- This is the "magic bullet" pipe
+        .stdin(cliphist_stdout) 
         .status()
         .context("Failed to spawn 'wl-copy'")?;
     
@@ -168,7 +167,7 @@ fn main() -> Result<()> {
                 }
                 // User selected an item, so we copy it and exit
                 decode_and_copy(&selection)?;
-                break; // Exit loop
+                break;
             }
             1 => break, // 1 = Esc, exit loop
             10 => { // 10 = Ctrl+Del
@@ -186,7 +185,7 @@ fn main() -> Result<()> {
                 break;
             }
         }
-    } // End of loop
+    } 
 
     Ok(())
 }

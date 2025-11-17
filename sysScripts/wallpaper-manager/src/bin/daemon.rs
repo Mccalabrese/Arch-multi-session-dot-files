@@ -122,7 +122,7 @@ fn main() -> Result<()> {
     let wall_dir = PathBuf::from(wall_dir_str);
     let cache_file_str = shellexpand::tilde(&config.cache_file).to_string();
     let cache_file = PathBuf::from(cache_file_str);
-    // 3. Verify the directory exists
+    // Verify the directory exists
     if !wall_dir.exists() {
         anyhow::bail!("Wallpaper directory does not exist: {:?}", wall_dir);
     }

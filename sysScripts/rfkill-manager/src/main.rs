@@ -1,6 +1,6 @@
 use anyhow::{anyhow, Context, Result};
 use libc;
-use notify_rust::Notification; // <-- Our new crate!
+use notify_rust::Notification;
 use serde::Deserialize;
 use serde_json::json;
 use std::env;

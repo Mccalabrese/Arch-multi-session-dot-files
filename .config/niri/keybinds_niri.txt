@@ -11,6 +11,7 @@
 * Mod + Shift + P - Keybind Launcher (kb-launcher)
 * Ctrl + Alt + P  - Power Menu (power-menu)
 * Mod + Alt + C - Gnome Calculator
+* Mod + Alt + E - Emoji Selector
 
 ## ⚙️ System & Session
 * Mod + Q         - Close Active Window

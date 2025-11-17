@@ -92,7 +92,7 @@ fn apply_sway_wallpaper(selected_file: &Path, monitor: &str, cache_filename: &st
         .spawn()
         .context("Failed to run swaybg")?;
 
-    // --- We ALSO write to the cache file here ---
+    // --- write to the cache file ---
     if let Some(mut cache_path) = dirs::cache_dir() {
         cache_path.push(cache_filename);
         let _ = fs::write(cache_path, selected_file.to_str().unwrap_or(""));
@@ -102,7 +102,7 @@ fn apply_sway_wallpaper(selected_file: &Path, monitor: &str, cache_filename: &st
 }
 
 // ---
-// The NEW "Dumb" main function
+// main function
 // ---
 fn main() -> Result<()> {
     //load config

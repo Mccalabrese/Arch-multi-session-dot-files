@@ -4,10 +4,10 @@ use serde::Deserialize;
 use serde_json;
 use std::ffi::OsStr;
 use std::process::Command;
-use sysinfo::{Signal, System}; // Added correct imports
+use sysinfo::{Signal, System};
 use toml;
 use shellexpand;
-use std::fs; // <-- You were missing this for load_config
+use std::fs;
 
 // --- Config Structs (from config.toml) ---
 #[derive(Deserialize, Debug)]
@@ -33,7 +33,7 @@ struct GlobalConfig {
 // --- Hyprland JSON Struct ---
 #[derive(Deserialize, Debug)]
 struct HyprMonitor {
-    height: i32, // <-- FIXED: This is an integer (e.g., 1440), not f64
+    height: i32,
     scale: f64,
     focused: bool,
 }
@@ -53,7 +53,6 @@ struct SwayMode {
 // --- Helper: Get Compositor ---
 fn get_compositor() -> String {
     let sys = System::new_all();
-    // FIXED: .next() is a function
     if sys.processes_by_name(OsStr::new("niri")).next().is_some() {
         "niri".to_string()
     } else if sys.processes_by_name(OsStr::new("Hyprland")).next().is_some() {
@@ -75,12 +74,10 @@ fn load_config() -> Result<GlobalConfig> {
     Ok(config)
 }
 
-// --- Helper: Kill Existing wlogout ---
+// --- Kill Existing wlogout ---
 fn check_and_kill_wlogout() -> bool {
     let sys = System::new_all();
     let process_name = OsStr::new("wlogout");
-    
-    // FIXED: It's processes_by_name (plural)
     if let Some(process) = sys.processes_by_name(process_name).next() {
         println!("Found running wlogout (PID: {}), sending kill signal...", process.pid());
         process.kill_with(Signal::Term);
@@ -108,7 +105,7 @@ fn get_hyprland_data() -> Result<(f64, f64)> {
         .context("Failed to parse hyprctl JSON output")?;
     
     if let Some(focused_monitor) = monitors.iter().find(|m| m.focused) {
-        // Hyprland `height` is already logical, so we just return it
+        // Hyprland `height` is already logical
         Ok((focused_monitor.height as f64, focused_monitor.scale))
     } else {
         Err(anyhow!("No focused monitor found in hyprctl output"))
@@ -164,7 +161,7 @@ fn get_niri_data() -> Result<(f64, f64)> {
 
     // Niri doesn't specify focused, so we parse the first monitor
     let mode_re = Regex::new(r"Current mode: (\d+)x(\d+) @")?;
-    let scale_re = Regex::new(r"Scale: ([\d\.]+)")?; // Note: "Scale:", not "Scale factor:"
+    let scale_re = Regex::new(r"Scale: ([\d\.]+)")?;
 
     let mode_caps = mode_re.captures(&output_str)
         .context("Could not find 'Current mode:' in niri output")?;
@@ -199,7 +196,7 @@ fn calculate_margins(logical_height: f64, config: &PowerMenuConfig) -> (i32, i32
         (&config.res_720, config.columns)
     };
     
-    // We just use the margins directly as logical pixels.
+    // I just used the margins directly as logical pixels.
     // wlogout will handle scaling them based on the monitor's scale factor.
     let top = margin_config.top_margin as i32;
     let bottom = margin_config.bottom_margin as i32;

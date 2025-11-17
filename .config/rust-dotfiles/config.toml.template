@@ -145,3 +145,7 @@ bar_signal_num = 11 # We'll use 11 for this one
 [clip_manager]
 rofi_config = "~/.config/rofi/config-clipboard.rasi"
 message = "CTRL+DEL = Delete Entry | ALT+DEL = Wipe History"
+
+[emoji_picker]
+rofi_config = "~/.config/rofi/config-emoji.rasi" 
+message = "Search Emojis (Name or Keyword)"

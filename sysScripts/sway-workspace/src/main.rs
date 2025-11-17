@@ -22,7 +22,6 @@ fn main() -> Result<()> {
     }
 
     // 2. Parse the JSON from the raw bytes (output.stdout)
-    //    We use from_slice which is more efficient than from_str.
     let workspaces: Vec<SwayWorkspace> = serde_json::from_slice(&output.stdout)
         .context("Failed to parse swaymsg JSON. The output was not JSON.")?;
 

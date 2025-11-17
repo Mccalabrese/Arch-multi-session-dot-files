@@ -1,14 +1,14 @@
-use std::fs; // We need this now
+use std::fs;
 use std::process::{Command, Stdio};
-use std::path::{Path, PathBuf}; // Use std::path::Path
+use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Context, Result};
 use notify_rust::{Notification, Urgency};
 use serde::Deserialize;
-use shlex; // <-- NEW
-use toml; // <-- NEW
-use shellexpand; // <-- NEW
+use shlex;
+use toml;
+use shellexpand;
 
-// --- 1. NEW: Config Structs ---
+// --- Config Structs ---
 
 #[derive(Deserialize, Debug)]
 struct Global {
@@ -29,7 +29,7 @@ struct GlobalConfig {
     updater: UpdaterConfig,
 }
 
-// --- 2. NEW: Config Loader ---
+// --- Config Loader ---
 
 fn load_config() -> Result<GlobalConfig> {
     let config_path = shellexpand::tilde("~/.config/rust-dotfiles/config.toml").to_string();
@@ -40,18 +40,17 @@ fn load_config() -> Result<GlobalConfig> {
     Ok(config)
 }
 
-// --- 3. Helper Functions (Unchanged) ---
+// --- Helper Functions ---
 
 fn check_dependency(cmd: &str) -> bool {
     Command::new(cmd)
-        .arg("-h") // Using -h is a bit of a guess, --help is safer
+        .arg("-h")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
         .is_ok()
 }
 
-// Note: Changed icon to take &Path
 fn send_notification(summary: &str, body: &str, icon: &Path, urgency: Urgency) -> Result<()> {
     Notification::new()
         .summary(summary)
@@ -63,19 +62,18 @@ fn send_notification(summary: &str, body: &str, icon: &Path, urgency: Urgency) -
     Ok(())
 }
 
-// --- 4. REFACTORED Main Function ---
+// --- Main Function ---
 
 fn main() -> Result<()> {
-    // 1. Load config
     let config = load_config().context("Failed to load configuration")?;
     let global_conf = config.global;
     let updater_conf = config.updater;
 
-    // 2. Resolve paths from config
+    // Resolve paths from config
     let icon_error = PathBuf::from(shellexpand::tilde(&updater_conf.icon_error).to_string());
     let icon_success = PathBuf::from(shellexpand::tilde(&updater_conf.icon_success).to_string());
     
-    // 3. Check dependencies (from config)
+    // Check dependencies (from config)
     let terminal_cmd = &global_conf.terminal;
     let update_cmd_name = updater_conf.update_command.get(0)
         .context("'update_command' in config.toml is empty")?;
@@ -100,7 +98,7 @@ fn main() -> Result<()> {
         return Err(anyhow!("Dependency missing: {}", update_cmd_name));
     }
 
-    // 4. Build the update script
+    // Build the update script
     // Safely join the command parts (e.g., ["yay", "-Syu"] -> "yay -Syu")
     let update_cmd_str = shlex::join(updater_conf.update_command.iter().map(AsRef::as_ref));
     
@@ -112,12 +110,12 @@ fn main() -> Result<()> {
         sleep 5
         exit $exit_code
     "#,
-        update_cmd_str // Inject our config-driven command
+        update_cmd_str
     );
 
-    // 5. Launch the terminal (from config)
-    let status = Command::new(terminal_cmd) // Use config terminal
-        .arg(format!("--title={}", updater_conf.window_title)) // Use config title
+    // Launch the terminal 
+    let status = Command::new(terminal_cmd)
+        .arg(format!("--title={}", updater_conf.window_title))
         .arg("-e")
         .arg("bash")
         .arg("-c")
@@ -125,19 +123,19 @@ fn main() -> Result<()> {
         .status()
         .context(format!("Failed to launch terminal: {}", terminal_cmd))?;
     
-    // 6. Final notification (using config icons)
+    // Final notification (using config icons)
     if status.success() {
         send_notification(
             "System Update Complete",
             "Your Arch Linux system has been successfully updated.",
-            &icon_success, // Use config icon
+            &icon_success,
             Urgency::Low,
         )?;
     } else {
         send_notification(
             "System Update Failed",
             "The update process encountered an error.",
-            &icon_error, // Use config icon
+            &icon_error,
             Urgency::Critical,
         )?;
     }

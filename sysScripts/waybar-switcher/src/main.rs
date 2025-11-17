@@ -59,7 +59,7 @@ fn main() -> Result<()> {
     let compositor = get_compositor().unwrap_or_else(|| "unknown".to_string());
     println!("Detected compositor: {}", compositor);
     // 3. Determine Source File based on Config
-    // We expand the tilde (~) immediately so fs::copy works
+    // expand the tilde (~) immediately so fs::copy works
     let source_path_str = match compositor.as_str() {
         "niri" => &config.niri_config,
         "hyprland" => &config.hyprland_config,
@@ -85,7 +85,7 @@ fn main() -> Result<()> {
     Command::new("killall")
         .arg("waybar")
         .status()
-        .ok(); // We ignore errors here (e.g., if waybar wasn't running)
+        .ok(); // ignore errors here (e.g., if waybar wasn't running)
 
     // Start new instance with the specific config file
     Command::new("waybar")

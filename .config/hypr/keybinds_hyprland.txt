@@ -11,6 +11,7 @@
 * $mainMod + Shift + P    - Keybind Launcher (kb-launcher)
 * Ctrl + Alt + P          - Power Menu (power-menu)
 * $mainMod + Alt + C      - Gnome Calculator
+* #mainMod + Alt + E      - Emoji selector
 
 ## ⚙️ System & Session
 * $mainMod + Q            - Close Active Window

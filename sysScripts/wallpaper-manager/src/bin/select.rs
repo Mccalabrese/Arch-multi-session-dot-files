@@ -26,7 +26,7 @@ struct GlobalConfig {
     wallpaper_manager: WallpaperManagerConfig,
 }
 
-// --- NEW: Config Loader Function ---
+// --- Config Loader Function ---
 fn load_config() -> Result<GlobalConfig> {
     let config_path = shellexpand::tilde("~/.config/rust-dotfiles/config.toml").to_string();
 
@@ -138,7 +138,7 @@ fn ask_rofi(prompt: &str, items: Vec<String>) -> Result<String> {
 }
 
 // ---
-// The NEW main function logic
+// main function
 // ---
 fn main() -> Result<()> {
     let global_config = load_config()?;
@@ -149,20 +149,20 @@ fn main() -> Result<()> {
         anyhow::bail!("No supported compositor running.");
     }
 
-    // 2. Get Monitor List
+    // Get Monitor List
     let monitor_list = get_monitor_list(&compositor)?;
     if monitor_list.is_empty() {
         anyhow::bail!("Could not detect any active monitors.");
     }
 
-    // 3. Ask user to pick a monitor (Rofi 1)
+    // Ask user to pick a monitor (Rofi 1)
     let chosen_monitor = ask_rofi("Select monitor", monitor_list)?;
     if chosen_monitor.is_empty() {
         anyhow::bail!("No monitor selected.");
     }
 
     // ---
-    // 4. All the logic for picking a wallpaper
+    // All the logic for picking a wallpaper
     // ---
     let cache_file_str = shellexpand::tilde(&config.cache_file).to_string();
     let cache_file = PathBuf::from(cache_file_str);
@@ -183,7 +183,7 @@ fn main() -> Result<()> {
         rofi_input.push_str(&line);
     }
 
-    // 5. Ask user to pick a wallpaper (Rofi 2)
+    // Ask user to pick a wallpaper (Rofi 2)
     let rofi_config_str = shellexpand::tilde(&config.rofi_config_path).to_string();
     let rofi_config = PathBuf::from(rofi_config_str);
     let theme_override = &config.rofi_theme_override;
@@ -219,21 +219,21 @@ fn main() -> Result<()> {
         .ok_or_else(|| anyhow!("Selected wallpaper not found in cache"))?;
 
     // ---
-    // 6. Call the "Dumb" Apply Script
+    // Call the "Dumb" Apply Script
     // We pass it all the answers so it doesn't have to think.
     // ---
     let current_exe = env::current_exe()
         .context("Failed to find path of our own executable")?;
 
-    // 2. Get the directory our executable lives in (e.g., /home/michael/.cargo/bin)
+    // Get the directory our executable lives in (e.g., /home/user/.cargo/bin)
     let bin_dir = current_exe.parent()
         .context("Failed to get parent directory of our executable")?;
 
-    // 3. Build the full, absolute path to our sibling 'wp-apply'
+    // Build the full, absolute path to our sibling 'wp-apply'
     let apply_path = bin_dir.join("wp-apply");
 
-    // 4. Call 'wp-apply' using its full path
-    Command::new(apply_path) // <-- This is the fix!
+    // Call 'wp-apply' using its full path
+    Command::new(apply_path)
         .arg(selected_wp.path)
         .arg(&compositor)
         .arg(&chosen_monitor)

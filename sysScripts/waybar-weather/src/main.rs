@@ -30,7 +30,7 @@ fn load_config() -> Result<GlobalConfig> {
     Ok(config)
 }
 
-// --- 1. Structs de Ubicación (Sin cambios) ---
+// --- location struct ---
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Location {
     latitude: f64,
@@ -38,15 +38,15 @@ struct Location {
     accuracy: f64,
 }
 
-// --- 2. Structs de OWM (¡EXPANDIDAS!) ---
+// --- OWM structs ---
 
-#[derive(Deserialize, Debug, Clone)] // <-- Added Clone
+#[derive(Deserialize, Debug, Clone)]
 struct Weather {
     id: u32,
     description: String,
 }
 
-#[derive(Deserialize, Debug, Clone)] // <-- Added Clone
+#[derive(Deserialize, Debug, Clone)] 
 struct Main {
     temp: f64,
     feels_like: f64,
@@ -76,10 +76,10 @@ struct CurrentWeather {
     wind: Wind,
     visibility: Option<f64>,
     dt: i64,
-    timezone: i64, // <-- NEW: Timezone offset in seconds from UTC
+    timezone: i64, // Timezone offset in seconds from UTC
 }
 
-// --- 3. Structs de Nominatim (Sin cambios) ---
+// --- location structs ---
 #[derive(Deserialize, Debug)]
 struct NominatimAddress {
     city: Option<String>,
@@ -94,7 +94,7 @@ struct NominatimResponse {
     address: NominatimAddress,
 }
 
-// --- 4. NUEVO: Structs for Forecast API ---
+// --- Structs for Forecast API ---
 #[derive(Deserialize, Debug)]
 struct ForecastItem {
     dt: i64, // Timestamp
@@ -109,9 +109,8 @@ struct Forecast {
 }
 
 
-// --- 5. Funciones de Ubicación (Sin cambios) ---
+// --- Get Location ---
 fn run_where_am_i() -> Result<Location> {
-    // ... (identical to previous version) ...
     let output = Command::new("/usr/lib/geoclue-2.0/demos/where-am-i")
         .output()
         .context("Failed to run 'where-am-i' command")?;
@@ -134,14 +133,12 @@ fn run_where_am_i() -> Result<Location> {
 }
 
 fn get_cache_path() -> Result<PathBuf> {
-    // ... (identical) ...
     let mut path = dirs::cache_dir().context("Failed to find cache directory")?;
     path.push("weather_location.json");
     Ok(path)
 }
 
 fn write_to_cache(location: &Location) -> Result<()> {
-    // ... (identical) ...
     let path = get_cache_path()?;
     let json_data = serde_json::to_string(location)?;
     fs::write(path, json_data)?;
@@ -149,17 +146,15 @@ fn write_to_cache(location: &Location) -> Result<()> {
 }
 
 fn read_from_cache() -> Result<Location> {
-    // ... (identical) ...
     let path = get_cache_path()?;
     let json_data = fs::read_to_string(path)?;
     let location: Location = serde_json::from_str(&json_data)?;
     Ok(location)
 }
 
-// --- 6. Funciones de Red (MODIFICADAS) ---
+// --- Get Icons and weather ---
 
 fn get_weather_icon(condition_id: u32, is_day: bool) -> &'static str {
-    // ... (identical) ...
     match condition_id {
         200..=299 => "󰖓", // Thunderstorm
         300..=399 => "󰖖", // Drizzle
@@ -188,7 +183,6 @@ async fn fetch_weather(client: &reqwest::Client, loc: &Location, api_key: &str) 
 }
 
 async fn get_city_state(client: &reqwest::Client, loc: &Location) -> Result<(String, String)> {
-    // ... (identical) ...
     let url = format!(
         "https://nominatim.openstreetmap.org/reverse?format=json&lat={}&lon={}&zoom=10",
         loc.latitude, loc.longitude
@@ -208,7 +202,7 @@ async fn get_city_state(client: &reqwest::Client, loc: &Location) -> Result<(Str
     Ok((city, state))
 }
 
-// --- 7. NUEVA: Función de Pronóstico ---
+// --- Get the forecast ---
 async fn fetch_forecast(client: &reqwest::Client, loc: &Location, api_key: &str) -> Result<Forecast> {
     let url = format!(
         "https://api.openweathermap.org/data/2.5/forecast?lat={}&lon={}&appid={}&units=imperial",
@@ -227,22 +221,20 @@ async fn fetch_forecast(client: &reqwest::Client, loc: &Location, api_key: &str)
 }
 
 
-// --- 8. Función Principal (¡MODIFICADA!) ---
+// --- Main Function ---
 #[tokio::main]
 async fn main() -> Result<()> {
     //load config
     let global_config = load_config()?;
     let api_key = global_config.waybar_weather.owm_api_key;
-    const NOMINATIM_USER_AGENT: &str = "WaybarWeatherScript/2.0-owm (User: michael-arch; contact: nw.calabrese@proton.me)";
-    
+    const NOMINATIM_USER_AGENT: &str = "WaybarWeatherScript/2.0-owm (Repo: github.com/Mccalabrese/Arch-multi-session-dot-files)"; 
     let http_client = reqwest::Client::builder()
         .user_agent(NOMINATIM_USER_AGENT)
         .build()?;
 
-    // --- Obtener Ubicación (Sin cambios) ---
+    // --- Obtain Location ---
     let location_result = run_where_am_i();
     let location = match location_result {
-        // ... (identical cache logic) ...
         Ok(fresh_location) => {
             if fresh_location.accuracy < 1500.0 {
                 if let Err(e) = write_to_cache(&fresh_location) {
@@ -262,14 +254,14 @@ async fn main() -> Result<()> {
         }
     };
 
-    // --- MODIFICADO: Ejecutar TRES llamadas en paralelo ---
+    // --- Fetch API data ---
     let (weather_result, geo_result, forecast_result) = tokio::join!(
         fetch_weather(&http_client, &location, &api_key),
         get_city_state(&http_client, &location),
-        fetch_forecast(&http_client, &location, &api_key) // <-- La tercera llamada
+        fetch_forecast(&http_client, &location, &api_key)
     );
 
-    // --- Manejar resultados ---
+    // --- Display Results ---
     let weather_data = match weather_result {
         Ok(data) => data,
         Err(e) => {
