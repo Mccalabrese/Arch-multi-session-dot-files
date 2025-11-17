@@ -21,6 +21,7 @@
       "custom/hint"
     ],
     "modules-center": [
+      "idle_inhibitor",
       "custom/sway_workspace_number",
       "wlr/taskbar"
     ],

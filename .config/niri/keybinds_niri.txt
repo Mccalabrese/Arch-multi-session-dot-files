@@ -20,6 +20,7 @@
 * Mod + Shift + E - Quit Niri
 * Ctrl + Alt + Delete - Quit Niri
 * Mod + Alt + R   - Refresh Notification Center (swaync)
+* Mod + Alt + V - Rofi (Clipboard Manager)
 
 ## 🪟 Window & Column
 * Mod + O          - Toggle Overview
@@ -57,7 +58,3 @@
 * Print       - Screenshot (Whole Output)
 * Ctrl + Print  - Screenshot (Screen)
 * Alt + Print   - Screenshot (Active Window)
-
----
-## 📜 Legacy Scripts (To Be Rewritten)
-* Mod + Alt + V - Rofi (Clipboard Manager)

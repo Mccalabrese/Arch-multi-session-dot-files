@@ -19,6 +19,7 @@
 * XF86Rfkill              - Toggle Airplane Mode
 * $mainMod + R            - Reload Hyprland Config
 * $mainMod + Shift + N    - Toggle Notification Center (swaync)
+* $mainMod + Alt + V      - Rofi (Clipboard Manager)
 
 ## 🪟 Window & Layout
 * $mainMod + Shift + F      - Toggle Fullscreen (Real)
@@ -69,7 +70,3 @@
 * Print             - Screenshot (Fullscreen)
 * $mainMod + Print  - Screenshot (Area)
 * Alt + Print       - Screenshot (Active Window)
-
----
-## 📜 Legacy Scripts (To Be Rewritten)
-* $mainMod + Alt + V - Rofi (Clipboard Manager)

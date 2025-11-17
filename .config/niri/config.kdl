@@ -301,7 +301,7 @@ binds {
     Mod+Alt+C { spawn "gnome-calculator"; }
 
     // User Scripts (Corrected Syntax)
-    Mod+Alt+V { spawn "$HOME/.config/hypr/scripts/ClipManager.sh"; }
+    Mod+Alt+V { spawn "$HOME/.cargo/bin/clip-manager"; }
     Mod+Shift+P { spawn "$HOME/.cargo/bin/kb-launcher"; }
     Control+Alt+P { spawn "$HOME/.cargo/bin/power-menu"; }
     // Exit Niri

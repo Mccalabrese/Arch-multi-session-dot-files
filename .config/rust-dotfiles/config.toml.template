@@ -141,3 +141,7 @@ tooltip_off = "Airplane Mode: OFF"
 # Waybar signal (to refresh the module)
 bar_process_name = "waybar"
 bar_signal_num = 11 # We'll use 11 for this one
+
+[clip_manager]
+rofi_config = "~/.config/rofi/config-clipboard.rasi"
+message = "CTRL+DEL = Delete Entry | ALT+DEL = Wipe History"

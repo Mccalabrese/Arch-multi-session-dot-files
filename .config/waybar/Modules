@@ -199,7 +199,6 @@
 		"activated": " ",
 		"deactivated": " ",
 	},
-	"on-click": "~/.config/hypr/scripts/toggle_idle_inhibit.sh"
 },
 
 "keyboard-state": {

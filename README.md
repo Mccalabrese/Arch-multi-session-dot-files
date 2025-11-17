@@ -29,28 +29,28 @@ Bash
 
 ### The compositors and base DE (for services)
 
-sudo pacman -S sway hyprland niri gnome
+    sudo pacman -S sway hyprland niri gnome
 
 ### Core UI tools
 
-sudo pacman -S waybar hyprlock swayidle wofi rofi wlogout hypridle
+    sudo pacman -S waybar hyprlock swayidle wofi rofi wlogout hypridle
 
 ### Key system services & utilities
 
-sudo pacman -S polkit-gnome nm-applet udiskie geoclue greetd greetd-tuigreet
-sudo pacman -S pulseaudio # or pipewire-pulse, your call
+    sudo pacman -S polkit-gnome nm-applet udiskie geoclue greetd greetd-tuigreet
+    sudo pacman -S pulseaudio # or pipewire-pulse, your call
 
 ### Our custom scripts will need these
 
-sudo pacman -S cloudflared pacman-contrib fakeroot # (for 'yay' and 'checkupdates')
+    sudo pacman -S cloudflared pacman-contrib fakeroot rfkill cliphist wl-clipboard
 
 ### User apps I use
 
-sudo pacman -S ghostty thunar
+    sudo pacman -S ghostty thunar
 
 ### Build toolchain for our Rust apps
 
-sudo pacman -S rustup openssl pkg-config libc
+    sudo pacman -S rustup openssl pkg-config libc
 
 ## 2. Manual System Config (The "Gotchas")
 
@@ -159,6 +159,8 @@ Bash
     cd sysScripts/kb-launcher && cargo install --path .
     cd sysScripts/updater && cargo install --path .
     cd sysScripts/power-menu && cargo install --path .
+    cd sysScripts/rfkill-manager && cargo install --path .
+    cd sysScripts/clip-manager && cargo install --path .
 
 ## 5. Setting Up Your Configs & Secrets
 

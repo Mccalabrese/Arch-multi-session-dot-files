@@ -17,6 +17,7 @@
 * $mod + Alt + S - Lock and Suspend
 * $mod + R       - Reload Sway Config
 * $mod + Shift + E - Exit Sway (with confirmation)
+* $mod + Alt + V - Rofi (Clipboard Manager)
 
 ## 🪟 Window & Layout
 * $mod + Shift + F - Toggle Fullscreen
@@ -44,10 +45,6 @@
 
 ## 📊 Bar & Toggles
 * $mod + Ctrl + Alt + B - Toggle Waybar (Show/Hide)
-
----
-## 📜 Legacy Scripts (To Be Rewritten)
-* $mod + Alt + V - Rofi (Clipboard Manager)
 
 ## 🖥️ Screenshots
 * Print         - Screenshot (Fullscreen)
