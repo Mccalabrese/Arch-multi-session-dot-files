@@ -119,7 +119,11 @@ animations {
 }
 
 // Window Rules
-
+//gnome-calculator
+window-rule {
+    match app-id=r"gnome-calculator"
+    open-floating true
+}
 // KeybindCheatSheet
 window-rule {
     match title="KeybindCheatSheet"
@@ -293,12 +297,12 @@ binds {
     Mod+B { spawn "xdg-open" "https://"; } // Browser
     Control+Alt+T { spawn "ghostty"; } // Terminal
     Mod+E { spawn "thunar"; } // File Manager
+    Mod+Alt+C { spawn "gnome-calculator"; }
 
     // User Scripts (Corrected Syntax)
     Mod+Alt+E { spawn "$HOME/.config/hypr/scripts/RofiEmoji.sh"; }
     Mod+S { spawn "$HOME/.config/hypr/scripts/RofiSearch.sh"; }
     Mod+Alt+V { spawn "$HOME/.config/hypr/scripts/ClipManager.sh"; }
-    Mod+Alt+C { spawn "$HOME/.config/hypr/scripts/RofiCalc.sh"; }
     Mod+Shift+P { spawn "$HOME/.cargo/bin/kb-launcher"; }
     Control+Alt+P { spawn "$HOME/.cargo/bin/power-menu"; }
     // Exit Niri
