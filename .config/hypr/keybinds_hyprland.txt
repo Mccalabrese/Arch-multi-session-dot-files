@@ -30,6 +30,8 @@
 * $mainMod + Shift + I - Toggle Split Direction (Dwindle)
 * $mainMod + M         - Set split ratio to 0.3
 * Alt + Tab            - Bring focused window to top
+* $mainMod + O       - Opacity ON (Set windows to transparent)
+* $mainMod + Shift + O - Opacity OFF (Set windows to opaque)
 
 ## 🏃 Focus & Movement
 * $mainMod + h/j/k/l - Focus Left / Down / Up / Right
@@ -72,5 +74,4 @@
 * $mainMod + Alt + E - Rofi (Emoji Selector)
 * $mainMod + Alt + V - Rofi (Clipboard Manager)
 * $mainMod + Alt + C - Rofi (Calculator)
-* $mainMod + Ctrl + O - Toggle Active Window Opacity
 * XF86Rfkill            - Toggle Airplane Mode

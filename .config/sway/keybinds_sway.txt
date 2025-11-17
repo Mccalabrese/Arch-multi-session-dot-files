@@ -28,6 +28,8 @@
 * $mod + Z         - Layout Toggle Split
 * $mod + A         - Focus Parent
 * $mod + C         - Enter Resize Mode
+* $mod + o         - Opacity ON (Set window to 85%)
+* $mod + Shift + o - Opacity OFF (Set window to 100%)
 
 ## 🏃 Focus & Movement
 * $mod + h/j/k/l (or Arrows) - Focus Left / Down / Up / Right
