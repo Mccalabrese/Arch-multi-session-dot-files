@@ -99,8 +99,7 @@
     "anchor": "bottom right"
         },
 	"modules": [
-		"custom/swaync",
-    "custom/rfkill"
+		"custom/swaync"
 	]
 },
 

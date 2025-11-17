@@ -121,7 +121,7 @@ animations {
 // Window Rules
 //gnome-calculator
 window-rule {
-    match app-id=r"gnome-calculator"
+    match app-id="org.gnome.Calculator"
     open-floating true
 }
 // KeybindCheatSheet
@@ -193,7 +193,7 @@ binds {
     XF86AudioMicMute allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"; }
     XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "set" "5%+"; }
     XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "set" "5%-"; }
-    XF86Rfkill allow-when-locked=true { spawn "$HOME/.cargo/bin/rfkill-manager" }
+    XF86Rfkill allow-when-locked=true { spawn "$HOME/.cargo/bin/rfkill-manager"; }
 
     // Overview
     Mod+O repeat=false { toggle-overview; }

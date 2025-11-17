@@ -190,15 +190,6 @@
 	"on-click": "$HOME/.cargo/bin/updater",
 	"tooltip": true
 },
-"custom/rfkill": {
-    "format": "{}",
-    "return-type": "json",
-    "exec": "$HOME/.cargo/bin/rfkill-manager --status",
-    "on-click": "$HOME/.cargo/bin/rfkill-manager --toggle",
-    "interval": 5,
-    "signal": 11,
-    "tooltip": true
-},
 "custom/cloudflared": {
     "exec": "$HOME/.cargo/bin/cf-status",
     "return-type": "json",

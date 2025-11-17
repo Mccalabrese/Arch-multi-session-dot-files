@@ -40,7 +40,7 @@ fn load_config() -> Result<GlobalConfig> {
     Ok(config)
 }
 fn is_blocked() -> Result<bool> {
-    let output = Command::new("rfkill")
+    let output = Command::new("/usr/bin/rfkill")
         .arg("list")
         .arg("all")
         .output()
@@ -82,7 +82,7 @@ fn run_toggle(config: &RfkillConfig) -> Result<()> {
         ("block", "Airplane Mode: ON")
     };
     //Run toggle command
-    let status = Command::new("rfkill")
+    let status = Command::new("/usr/bin/rfkill")
         .arg(action)
         .arg("all")
         .status()?;

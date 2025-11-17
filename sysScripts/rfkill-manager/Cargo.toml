@@ -1,5 +1,5 @@
 [package]
-name = "rfkill-toggle"
+name = "rfkill-manager"
 version = "0.1.0"
 edition = "2024"
 
