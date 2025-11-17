@@ -73,5 +73,4 @@
 * $mainMod + Alt + V - Rofi (Clipboard Manager)
 * $mainMod + Alt + C - Rofi (Calculator)
 * $mainMod + Ctrl + O - Toggle Active Window Opacity
-* $mainMod + Alt + Scroll  - Zoom In / Out
 * XF86Rfkill            - Toggle Airplane Mode
