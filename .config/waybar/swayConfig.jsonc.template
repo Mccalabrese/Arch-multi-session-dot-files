@@ -17,7 +17,8 @@
     "margin-left": 8,
     "margin-right": 8,
     "modules-left": [
-      "clock"
+      "clock",
+      "custom/hint"
     ],
     "modules-center": [
       "custom/sway_workspace_number",

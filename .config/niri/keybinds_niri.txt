@@ -10,13 +10,16 @@
 * Mod + W       - Wallpaper Selector (wp-select)
 * Mod + Shift + P - Keybind Launcher (kb-launcher)
 * Ctrl + Alt + P  - Power Menu (power-menu)
+* Mod + Alt + C - Gnome Calculator
 
 ## ⚙️ System & Session
 * Mod + Q         - Close Active Window
 * Super + Alt + L - Lock Screen (hyprlock)
 * Mod + Alt + S   - Lock and Suspend
+* XF86Rfkill      - Toggle Airplane Mode
 * Mod + Shift + E - Quit Niri
 * Ctrl + Alt + Delete - Quit Niri
+* Mod + Alt + R   - Refresh Notification Center (swaync)
 
 ## 🪟 Window & Column
 * Mod + O          - Toggle Overview
@@ -57,8 +60,4 @@
 
 ---
 ## 📜 Legacy Scripts (To Be Rewritten)
-* Mod + Alt + R - Refresh (Waybar, etc.)
-* Mod + Alt + E - Rofi (Emoji Selector)
-* Mod + S       - Rofi (Google Search)
 * Mod + Alt + V - Rofi (Clipboard Manager)
-* Mod + Alt + C - Rofi (Calculator)

@@ -10,6 +10,7 @@
 * $mod + W       - Wallpaper Selector (wp-select)
 * $mod + Shift + P - Keybind Launcher (kb-launcher)
 * Ctrl + Alt + P - Power Menu (power-menu)
+* $mod + Alt + C - Gnome Calculator
 
 ## ⚙️ System & Session
 * $mod + Q       - Close Active Window
@@ -46,11 +47,7 @@
 
 ---
 ## 📜 Legacy Scripts (To Be Rewritten)
-* $mod + Alt + R - Refresh (Waybar, etc.)
-* $mod + Alt + E - Rofi (Emoji Selector)
-* $mod + S       - Rofi (Google Search)
 * $mod + Alt + V - Rofi (Clipboard Manager)
-* $mod + Alt + C - Rofi (Calculator)
 
 ## 🖥️ Screenshots
 * Print         - Screenshot (Fullscreen)

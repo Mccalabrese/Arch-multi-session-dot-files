@@ -123,3 +123,21 @@ bottom_margin = 200
 top_margin = 50
 bottom_margin = 50
 columns = 3 # This resolution uses a different layout
+
+[rfkill_toggle]
+# Icon to use for the notification
+icon = "~/.config/swaync/images/ja.png"
+
+# Waybar display for "ON" (blocked)
+text_on = "✈️️" # Example: "ON" or airplane icon
+class_on = "on"
+tooltip_on = "Airplane Mode: ON"
+
+# Waybar display for "OFF" (unblocked)
+text_off = "󰀝" # Example: "OFF" or wifi icon
+class_off = "off"
+tooltip_off = "Airplane Mode: OFF"
+
+# Waybar signal (to refresh the module)
+bar_process_name = "waybar"
+bar_signal_num = 11 # We'll use 11 for this one

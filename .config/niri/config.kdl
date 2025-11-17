@@ -193,6 +193,7 @@ binds {
     XF86AudioMicMute allow-when-locked=true { spawn-sh "wpctl set-mute @DEFAULT_AUDIO_SOURCE@ toggle"; }
     XF86MonBrightnessUp allow-when-locked=true { spawn "brightnessctl" "set" "5%+"; }
     XF86MonBrightnessDown allow-when-locked=true { spawn "brightnessctl" "set" "5%-"; }
+    XF86Rfkill allow-when-locked=true { spawn "$HOME/.cargo/bin/rfkill-manager" }
 
     // Overview
     Mod+O repeat=false { toggle-overview; }
@@ -300,8 +301,6 @@ binds {
     Mod+Alt+C { spawn "gnome-calculator"; }
 
     // User Scripts (Corrected Syntax)
-    Mod+Alt+E { spawn "$HOME/.config/hypr/scripts/RofiEmoji.sh"; }
-    Mod+S { spawn "$HOME/.config/hypr/scripts/RofiSearch.sh"; }
     Mod+Alt+V { spawn "$HOME/.config/hypr/scripts/ClipManager.sh"; }
     Mod+Shift+P { spawn "$HOME/.cargo/bin/kb-launcher"; }
     Control+Alt+P { spawn "$HOME/.cargo/bin/power-menu"; }
