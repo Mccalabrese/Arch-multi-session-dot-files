@@ -62,7 +62,7 @@ This is a personal repo, not a beginner's guide. It assumes you know what you're
 
 *Why not Python? Because Python is the absolute worst. It's a slow, dependency-hell nightmare. I don't trust its supply chain, and honestly, I just don't vibe with it. I'll take C-style syntax any day.*
 
-*Why not shell scripts? My old scripts were a Rube Goldberg machine of pgrep, jq, sed, awk, and cat all piped together. They were fragile, slow, and "worked like crap."*
+*Why not shell scripts? My old scripts were a disaster zone of pgrep, jq, sed, awk, and cat all piped together. They were fragile, slow, and worked like crap.*
 
 *But why not Zig? I love Zig. It's the future. But the sad reality is that its API changes so fast, I can't even learn the language before a pacman -Syu breaks everything I've written.*
 
