@@ -4,8 +4,16 @@ use std::process::Command;
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use shellexpand;
 use toml;
+
+fn expand_path(path: &str) -> PathBuf {
+    if path.starts_with("~/") {
+        if let Some(home) = dirs::home_dir() {
+            return home.join(&path[2..]);
+        }
+    }
+    PathBuf::from(path)
+}
 
 // --- Config Structs ---
 
@@ -32,11 +40,16 @@ struct Cache {
 // --- Config Loader ---
 
 fn load_config() -> Result<GlobalConfig> {
-    let config_path = shellexpand::tilde("~/.config/rust-dotfiles/config.toml").to_string();
+    let config_path = dirs::home_dir()
+        .context("Cannot find home dir")?
+        .join(".config/rust-dotfiles/config.toml");
+
     let config_str = fs::read_to_string(&config_path)
-        .with_context(|| format!("Failed to read config file from path: {}", config_path))?;
+        .with_context(|| format!("Failed to read config: {}", config_path.display()))?;
+    
     let config: GlobalConfig = toml::from_str(&config_str)
-        .context("Failed to parse config.toml. Check for syntax errors.")?;
+        .context("Failed to parse config.toml")?;
+    
     Ok(config)
 }
 
@@ -53,6 +66,9 @@ fn read_cache(cache_path: &Path) -> Result<Cache> {
 fn save_cache(count: usize, cache_path: &Path) -> Result<()> {
     let cache = Cache { count };
     let json_data = serde_json::to_string(&cache)?;
+    if let Some(parent) = cache_path.parent() {
+        fs::create_dir_all(parent)?;
+    }
     fs::write(cache_path, json_data)
         .context("Failed to write cache file")?;
     Ok(())
@@ -61,26 +77,24 @@ fn save_cache(count: usize, cache_path: &Path) -> Result<()> {
 // --- Check Function (returns a count) ---
 
 fn run_check(command_string: &str) -> Result<usize> {
-    let output = Command::new("/usr/bin/bash")
+    let output = Command::new("bash")
         .arg("-c")
         .arg(command_string)
         .output()
         .context(format!("Failed to spawn command: '{}'", command_string))?;
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let count = stdout.lines().count();
+    let count = stdout.trim().lines().count();
     if output.status.success() {
         return Ok(count);
     }
-    if output.status.code() == Some(1) {
-        if count == 0 {
-            return Ok(0);
-        }
+    if output.status.code() == Some(1) && count == 0 {
+        return Ok(0);
     }
     let stderr = String::from_utf8_lossy(&output.stderr);
     anyhow::bail!("Check command failed (exit code: {}):\n{}",
         output.status.code().unwrap_or(-1),
-        stderr
+        stderr.trim()
     );
 }
 
@@ -137,7 +151,7 @@ fn main() -> Result<()> {
         }
     };
     
-    let cache_path = PathBuf::from(shellexpand::tilde(&config.cache_file).to_string());
+    let cache_path = expand_path(&config.cache_file);
 
     match run_check(&config.command_string) {
         Ok(count) => {

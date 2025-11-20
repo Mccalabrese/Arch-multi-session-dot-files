@@ -4,10 +4,16 @@ use std::path::{Path, PathBuf};
 use anyhow::{anyhow, Context, Result};
 use notify_rust::{Notification, Urgency};
 use serde::Deserialize;
-use shlex;
 use toml;
-use shellexpand;
 
+fn expand_path(path: &str) -> PathBuf {
+    if path.starts_with("~/") {
+        if let Some(home) = dirs::home_dir() {
+            return home.join(&path[2..]);
+        }
+    }
+    PathBuf::from(path)
+}
 // --- Config Structs ---
 
 #[derive(Deserialize, Debug)]
@@ -32,11 +38,16 @@ struct GlobalConfig {
 // --- Config Loader ---
 
 fn load_config() -> Result<GlobalConfig> {
-    let config_path = shellexpand::tilde("~/.config/rust-dotfiles/config.toml").to_string();
+    let config_path = dirs::home_dir()
+        .context("Cannot find home dir")?
+        .join(".config/rust-dotfiles/config.toml");
+
     let config_str = fs::read_to_string(&config_path)
-        .with_context(|| format!("Failed to read config file from path: {}", config_path))?;
+        .with_context(|| format!("Failed to read config: {}", config_path.display()))?;
+
     let config: GlobalConfig = toml::from_str(&config_str)
-        .context("Failed to parse config.toml. Check for syntax errors.")?;
+        .context("Failed to parse config.toml")?;
+
     Ok(config)
 }
 
@@ -44,11 +55,12 @@ fn load_config() -> Result<GlobalConfig> {
 
 fn check_dependency(cmd: &str) -> bool {
     Command::new(cmd)
-        .arg("-h")
+        .arg("--version")
         .stdout(Stdio::null())
         .stderr(Stdio::null())
         .status()
-        .is_ok()
+        .map(|s| s.success())
+        .unwrap_or(false)
 }
 
 fn send_notification(summary: &str, body: &str, icon: &Path, urgency: Urgency) -> Result<()> {
@@ -65,51 +77,44 @@ fn send_notification(summary: &str, body: &str, icon: &Path, urgency: Urgency) -
 // --- Main Function ---
 
 fn main() -> Result<()> {
-    let config = load_config().context("Failed to load configuration")?;
+    let config = load_config()?;
     let global_conf = config.global;
     let updater_conf = config.updater;
 
     // Resolve paths from config
-    let icon_error = PathBuf::from(shellexpand::tilde(&updater_conf.icon_error).to_string());
-    let icon_success = PathBuf::from(shellexpand::tilde(&updater_conf.icon_success).to_string());
+    let icon_error = expand_path(&updater_conf.icon_error);
+    let icon_success = expand_path(&updater_conf.icon_success);
     
     // Check dependencies (from config)
     let terminal_cmd = &global_conf.terminal;
-    let update_cmd_name = updater_conf.update_command.get(0)
+    let update_bin = updater_conf.update_command.get(0)
         .context("'update_command' in config.toml is empty")?;
 
     if !check_dependency(terminal_cmd) {
-        send_notification(
+        let _ = send_notification(
             "Error: Dependency Missing",
             &format!("Terminal not found: {}", terminal_cmd),
             &icon_error,
             Urgency::Critical,
-        )?;
+        );
         return Err(anyhow!("Dependency missing: {}", terminal_cmd));
     }
 
-    if !check_dependency(update_cmd_name) {
-        send_notification(
+    if !check_dependency(update_bin) {
+        let _ = send_notification(
             "Error: Dependency Missing",
-            &format!("Update helper not found: {}", update_cmd_name),
+            &format!("Update helper not found: {}", update_bin),
             &icon_error,
             Urgency::Critical,
-        )?;
-        return Err(anyhow!("Dependency missing: {}", update_cmd_name));
+        );
+        return Err(anyhow!("Dependency missing: {}", update_bin));
     }
 
     // Build the update script
     // Safely join the command parts (e.g., ["yay", "-Syu"] -> "yay -Syu")
-    let update_cmd_str = shlex::join(updater_conf.update_command.iter().map(AsRef::as_ref));
+    let update_cmd_str = updater_conf.update_command.join(" ");
     
-    let update_script = format!(
-        r#"
-        {}
-        exit_code=$?
-        echo -e '\n\n🏁 Update process finished. This window will close in 5 seconds.'
-        sleep 5
-        exit $exit_code
-    "#,
+    let bash_script = format!("{} \n exit_code=$? \n echo -e '\\n\\n🏁 Update process finished. This window will close in 5 seconds.' \n sleep 5 \n exit $exit_code",
         update_cmd_str
     );
 
@@ -119,7 +124,7 @@ fn main() -> Result<()> {
         .arg("-e")
         .arg("bash")
         .arg("-c")
-        .arg(&update_script)
+        .arg(&bash_script)
         .status()
         .context(format!("Failed to launch terminal: {}", terminal_cmd))?;
     
