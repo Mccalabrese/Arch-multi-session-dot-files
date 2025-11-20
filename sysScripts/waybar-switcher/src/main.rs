@@ -1,12 +1,21 @@
-use std::ffi::OsStr;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 use anyhow::{Context, Result};
 use serde::Deserialize;
-use sysinfo::System;
 use toml;
-use shellexpand;
+use std::env;
+use std::thread;
+use std::time::Duration;
+
+fn expand_path(path: &str) -> PathBuf {
+    if path.starts_with("~/") {
+        if let Some(home) = dirs::home_dir() {
+            return home.join(&path[2..]);
+        }
+    }
+    PathBuf::from(path)
+}
 
 // --- Config Structs ---
 
@@ -26,10 +35,10 @@ struct GlobalConfig {
 // --- Config Loader ---
 
 fn load_config() -> Result<GlobalConfig> {
-    let config_path = shellexpand::tilde("~/.config/rust-dotfiles/config.toml").to_string();
+    let config_path = dirs::home_dir().context("Cannot find home dir")?.join(".config/rust-dotfiles/config.toml");
 
     let config_str = fs::read_to_string(&config_path)
-        .with_context(|| format!("Failed to read config file from path: {}", config_path))?;
+        .with_context(|| format!("Failed to read config file from path: {}", config_path.display()))?;
 
     let config: GlobalConfig = toml::from_str(&config_str)
         .context("Failed to parse config.toml. Check for syntax errors.")?;
@@ -38,16 +47,20 @@ fn load_config() -> Result<GlobalConfig> {
 }
 
 fn get_compositor() -> Option<String> {
-    let sys = System::new_all();
-
-    if sys.processes_by_name(OsStr::new("niri")).next().is_some() {
+    if env::var("NIRI_SOCKET").is_ok() {
         return Some("niri".to_string());
     }
-    if sys.processes_by_name(OsStr::new("Hyprland")).next().is_some() {
+    if env::var("HYPRLAND_INSTANCE_SIGNATURE").is_ok() {
         return Some("hyprland".to_string());
     }
-    if sys.processes_by_name(OsStr::new("sway")).next().is_some() {
+    if env::var("SWAYSOCK").is_ok() {
         return Some("sway".to_string());
+    }
+    if let Ok(desktop) = env::var("XDG_CURRENT_DESKTOP") {
+        let desktop = desktop.to_lowercase();
+        if desktop.contains("niri") { return Some("niri".to_string()); }
+        if desktop.contains("hyprland") { return Some("hyprland".to_string()); }
+        if desktop.contains("sway") { return Some("sway".to_string()); }
     }
     None
 }
@@ -69,8 +82,8 @@ fn main() -> Result<()> {
             &config.hyprland_config
         }
     };
-    let source_path = PathBuf::from(shellexpand::tilde(source_path_str).to_string());
-    let target_path = PathBuf::from(shellexpand::tilde(&config.target_file).to_string());
+    let source_path = expand_path(source_path_str);
+    let target_path = expand_path(&config.target_file);
 
     println!("Copying config:\n  From: {:?}\n  To:   {:?}", source_path, target_path);
 
@@ -81,16 +94,12 @@ fn main() -> Result<()> {
     // 5. Restart Waybar
     println!("Restarting Waybar...");
     
-    // Kill existing instances
-    Command::new("killall")
-        .arg("waybar")
-        .status()
-        .ok(); // ignore errors here (e.g., if waybar wasn't running)
-
+    let _ = Command::new("pkill").arg("-x").arg("waybar").status();
+    thread::sleep(Duration::from_millis(500));
     // Start new instance with the specific config file
     Command::new("waybar")
         .arg("-c")
-        .arg(target_path)
+        .arg(&target_path)
         .spawn()
         .context("Failed to spawn new waybar process")?;
 

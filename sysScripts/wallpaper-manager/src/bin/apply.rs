@@ -3,11 +3,18 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 use anyhow::{Context, Result};
 use dirs;
-use sysinfo::{Signal, System};
 use std::fs;
 use serde::Deserialize;
 use toml;
-use shellexpand;
+
+fn expand_path(path: &str) -> PathBuf {
+    if path.starts_with("~/") {
+        if let Some(home) = dirs::home_dir() {
+            return home.join(&path[2..]);
+        }
+    }
+    PathBuf::from(path)
+}
 
 #[derive(Deserialize, Debug)]
 struct WallpaperManagerConfig {
@@ -23,10 +30,12 @@ struct GlobalConfig {
 }
 
 fn load_config() -> Result<GlobalConfig> {
-    let config_path = shellexpand::tilde("~/.config/rust-dotfiles/config.toml").to_string();
+    let config_path = dirs::home_dir()
+        .context("Cannot find home dir")?
+        .join(".config/rust-dotfiles/config.toml");
 
     let config_str = fs::read_to_string(&config_path)
-        .with_context(|| format!("Failed to read config file from path: {}", config_path))?;
+        .with_context(|| format!("Failed to read config file from path: {}", config_path.display()))?;
 
     let config: GlobalConfig = toml::from_str(&config_str)
         .context("Failed to parse config.toml. Check for syntax errors.")?;
@@ -36,11 +45,7 @@ fn load_config() -> Result<GlobalConfig> {
 
 // pkill Helper
 fn pkill(name: &str) {
-    let mut sys = System::new_all();
-    sys.refresh_processes();
-    for process in sys.processes_by_name(name) {
-        process.kill_with(Signal::Term);
-    }
+    Command::new("pkill").arg("-x").arg(name).status().ok();
 }
 
 // ---
@@ -51,19 +56,13 @@ fn apply_swww_wallpaper(selected_file: &Path, monitor: &str, namespace: &str, sw
     println!("Applying wallpaper via swww (namespace: {})...", namespace);
     pkill("mpvpaper");
     pkill("swaybg");
-
-    let daemon_cmd = format!("swww-daemon --namespace {}", namespace);
-    let mut sys = System::new_all();
-    sys.refresh_processes();
-    if !sys.processes().values().any(|p| p.cmd().join(" ") == daemon_cmd) {
-        Command::new("swww-daemon")
-            .arg("--namespace")
-            .arg(namespace)
-            .arg("--format")
-            .arg("argb")
-            .spawn()
-            .context(format!("Failed to start swww-daemon for {}", namespace))?;
-    }
+    let _ = Command::new("swww-daemon")
+        .arg("--namespace")
+        .arg(namespace)
+        .arg("--format")
+        .arg("argb")
+        .spawn();
+    std::thread::sleep(std::time::Duration::from_millis(100));
     Command::new("swww")
         .arg("img") 
         .arg("--namespace")
@@ -72,9 +71,7 @@ fn apply_swww_wallpaper(selected_file: &Path, monitor: &str, namespace: &str, sw
         .arg(monitor)
         .arg(selected_file)
         .args(swww_params)
-        .status()?
-        .success()
-        .then_some(())
+        .status()
         .context("swww img command failed")?;
     Ok(())
 }
@@ -83,7 +80,6 @@ fn apply_sway_wallpaper(selected_file: &Path, monitor: &str, cache_filename: &st
     println!("Applying wallpaper for Sway...");
     pkill("swww-daemon");
     pkill("hyprpaper");
-
     Command::new("swaybg")
         .arg("-o")
         .arg(monitor)
@@ -120,7 +116,7 @@ fn main() -> Result<()> {
     match compositor.as_str() {
         "hyprland" => {
             apply_swww_wallpaper(&wallpaper_path, monitor, "hypr", &config.swww_params)?;
-            let refresh_script = shellexpand::tilde(&config.hyprland_refresh_script).to_string();
+            let refresh_script = expand_path(&config.hyprland_refresh_script);
             Command::new("bash").arg(refresh_script).status()?;
         }
         "niri" => {

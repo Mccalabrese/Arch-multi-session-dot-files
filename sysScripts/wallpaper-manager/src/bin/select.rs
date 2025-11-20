@@ -6,9 +6,16 @@ use std::process::{Command, Stdio};
 use anyhow::{anyhow, Context, Result};
 use dirs;
 use serde::Deserialize;
-use sysinfo::{System};
 use toml;
-use shellexpand;
+
+fn expand_path(path: &str) -> PathBuf {
+    if path.starts_with("~/") {
+        if let Some(home) = dirs::home_dir() {
+            return home.join(&path[2..]);
+        }
+    }
+    PathBuf::from(path)
+}
 
 #[derive(Deserialize, Debug)]
 struct WallpaperManagerConfig {
@@ -28,10 +35,12 @@ struct GlobalConfig {
 
 // --- Config Loader Function ---
 fn load_config() -> Result<GlobalConfig> {
-    let config_path = shellexpand::tilde("~/.config/rust-dotfiles/config.toml").to_string();
+    let config_path = dirs::home_dir()
+        .context("Cannot find home dir")?
+        .join(".config/rust-dotfiles/config.toml");
 
     let config_str = fs::read_to_string(&config_path)
-        .with_context(|| format!("Failed to read config file from path: {}", config_path))?;
+        .with_context(|| format!("Failed to read config file from path: {}", config_path.display()))?;
 
     let config: GlobalConfig = toml::from_str(&config_str)
         .context("Failed to parse config.toml. Check for syntax errors.")?;
@@ -56,17 +65,17 @@ struct Wallpaper {
 }
 
 fn get_compositor() -> String {
-    let mut sys = System::new_all();
-    sys.refresh_processes();
-    if sys.processes_by_name("niri").next().is_some() {
-        "niri".to_string()
-    } else if sys.processes_by_name("Hyprland").next().is_some() {
-        "hyprland".to_string()
-    } else if sys.processes_by_name("sway").next().is_some() {
-        "sway".to_string()
-    } else {
-        "unknown".to_string()
+    if env::var("NIRI_SOCKET").is_ok() { return "niri".to_string(); }
+    if env::var("HYPRLAND_INSTANCE_SIGNATURE").is_ok() { return "hyprland".to_string(); }
+    if env::var("SWAYSOCK").is_ok() { return "sway".to_string(); }
+    
+    if let Ok(desktop) = env::var("XDG_CURRENT_DESKTOP") {
+        let d = desktop.to_lowercase();
+        if d.contains("niri") { return "niri".to_string(); }
+        if d.contains("hypr") { return "hyprland".to_string(); }
+        if d.contains("sway") { return "sway".to_string(); }
     }
+    "unknown".to_string()
 }
 
 fn get_monitor_list(compositor: &str) -> Result<Vec<String>> {
@@ -118,21 +127,20 @@ fn get_monitor_list(compositor: &str) -> Result<Vec<String>> {
     }
 }
 
-fn ask_rofi(prompt: &str, items: Vec<String>) -> Result<String> {
+fn ask_rofi(prompt: &str, items: Vec<String>, config: Option<(&Path, &str)>) -> Result<String> {
     let items_str = items.join("\n");
-    let mut rofi = Command::new("rofi")
-        .arg("-dmenu")
-        .arg("-i") // Case-insensitive
-        .arg("-p")
-        .arg(prompt)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .context("Failed to spawn rofi (for monitor)")?;
-    rofi.stdin.as_mut().unwrap().write_all(items_str.as_bytes())?;
-    let output = rofi.wait_with_output()?;
+    let mut cmd = Command::new("rofi");
+    cmd.args(["-dmenu", "-i", "-p", prompt, "-markup-rows"]);
+    if let Some((conf, theme)) = config {
+        cmd.arg("-config").arg(conf);
+        cmd.arg("-theme-str").arg(theme);
+    }
+    cmd.stdin(Stdio::piped()).stdout(Stdio::piped());
+    let mut child = cmd.spawn().context("Failed to spawn rofi")?;
+    child.stdin.as_mut().unwrap().write_all(items_str.as_bytes())?;
+    let output = child.wait_with_output()?;
     if !output.status.success() {
-        anyhow::bail!("Rofi was cancelled (monitor selection)");
+        anyhow::bail!("Rofi was cancelled");
     }
     Ok(String::from_utf8(output.stdout)?.trim().to_string())
 }
@@ -156,16 +164,11 @@ fn main() -> Result<()> {
     }
 
     // Ask user to pick a monitor (Rofi 1)
-    let chosen_monitor = ask_rofi("Select monitor", monitor_list)?;
-    if chosen_monitor.is_empty() {
-        anyhow::bail!("No monitor selected.");
-    }
-
+    let chosen_monitor = ask_rofi("Select monitor", monitor_list, None)?;
     // ---
     // All the logic for picking a wallpaper
     // ---
-    let cache_file_str = shellexpand::tilde(&config.cache_file).to_string();
-    let cache_file = PathBuf::from(cache_file_str);
+    let cache_file = expand_path(&config.cache_file);
     if !cache_file.exists() {
         anyhow::bail!("Wallpaper cache missing! Please run 'wp-daemon' first.");
     }
@@ -174,63 +177,22 @@ fn main() -> Result<()> {
     let mut wallpapers: Vec<Wallpaper> = serde_json::from_str(&json_str)?;
     wallpapers.sort_by(|a, b| a.name.to_lowercase().cmp(&b.name.to_lowercase()));
 
-    let mut rofi_input = String::new();
-    for wp in &wallpapers {
-        let line = format!("{}\0icon\x1f{}\n", 
-            wp.name, 
-            wp.thumb_path.to_string_lossy()
-        );
-        rofi_input.push_str(&line);
-    }
+    let rofi_items: Vec<String> = wallpapers.iter().map(|wp| {
+        format!("{}\0icon\x1f{}", wp.name, wp.thumb_path.to_string_lossy())
+    }).collect();
+    let rofi_conf_path = expand_path(&config.rofi_config_path);
 
-    // Ask user to pick a wallpaper (Rofi 2)
-    let rofi_config_str = shellexpand::tilde(&config.rofi_config_path).to_string();
-    let rofi_config = PathBuf::from(rofi_config_str);
-    let theme_override = &config.rofi_theme_override;
-    
-    let mut rofi = Command::new("rofi")
-        .arg("-dmenu")
-        .arg("-i")
-        .arg("-p")
-        .arg("Select Wallpaper")
-        .arg("-markup-rows")
-        .arg("-config")
-        .arg(rofi_config)
-        .arg("-theme-str")
-        .arg(theme_override)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .spawn()
-        .context("Failed to spawn rofi (for wallpaper)")?;
+    let selection_name = ask_rofi(
+        "Select Wallpaper",
+        rofi_items,
+        Some((&rofi_conf_path, &config.rofi_theme_override))
+    )?;
 
-    rofi.stdin.as_mut().unwrap().write_all(rofi_input.as_bytes())?;
-    let output = rofi.wait_with_output()?;
-    if !output.status.success() {
-        anyhow::bail!("Rofi was cancelled (wallpaper selection)");
-    }
-    
-    let selection_name = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    if selection_name.is_empty() {
-        anyhow::bail!("No wallpaper selected.");
-    }
-
-    let selected_wp = wallpapers.into_iter()
-        .find(|w| w.name == selection_name)
+    let selected_wp = wallpapers.into_iter().find(|w| w.name == selection_name)
         .ok_or_else(|| anyhow!("Selected wallpaper not found in cache"))?;
-
-    // ---
-    // Call the "Dumb" Apply Script
-    // We pass it all the answers so it doesn't have to think.
-    // ---
-    let current_exe = env::current_exe()
-        .context("Failed to find path of our own executable")?;
-
-    // Get the directory our executable lives in (e.g., /home/user/.cargo/bin)
-    let bin_dir = current_exe.parent()
-        .context("Failed to get parent directory of our executable")?;
-
-    // Build the full, absolute path to our sibling 'wp-apply'
-    let apply_path = bin_dir.join("wp-apply");
+    // Call apply script
+    let current_exe = env::current_exe()?;
+    let apply_path = current_exe.parent().unwrap().join("wp-apply");
 
     // Call 'wp-apply' using its full path
     Command::new(apply_path)

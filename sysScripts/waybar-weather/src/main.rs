@@ -1,13 +1,18 @@
-use std::process::Command;
 use std::fs;
 use std::path::PathBuf;
 use std::time::SystemTime;
 use serde::{Deserialize, Serialize};
 use regex::Regex;
 use anyhow::{Context, Result};
-use chrono::{DateTime, FixedOffset, TimeZone};
+use chrono::{DateTime, FixedOffset};
 use toml;
-use shellexpand;
+use std::sync::OnceLock;
+use tokio::process::Command;
+
+static LAT_RE: OnceLock<Regex> = OnceLock::new();
+static LON_RE: OnceLock<Regex> = OnceLock::new();
+static ACC_RE: OnceLock<Regex> = OnceLock::new();
+static PANGO_RE: OnceLock<Regex> = OnceLock::new();
 
 //Config Structs
 #[derive(Deserialize, Debug)]
@@ -19,33 +24,27 @@ struct GlobalConfig {
     waybar_weather: WaybarWeatherConfig,
 }
 fn load_config() -> Result<GlobalConfig> {
-    let config_path = shellexpand::tilde("~/.config/rust-dotfiles/config.toml").to_string();
-
+    let config_path = dirs::home_dir()
+        .context("Could not determine home directory")?
+        .join(".config/rust-dotfiles/config.toml");
     let config_str = fs::read_to_string(&config_path)
-        .with_context(|| format!("Failed to read config file from path: {}", config_path))?;
-
+        .with_context(|| format!("Failed to read config file from path: {}", config_path.display()))?;
     let config: GlobalConfig = toml::from_str(&config_str)
         .context("Failed to parse config.toml. Check for syntax errors.")?;
-    
     Ok(config)
 }
-
-// --- location struct ---
+// --- Data structs ---
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct Location {
     latitude: f64,
     longitude: f64,
     accuracy: f64,
 }
-
-// --- OWM structs ---
-
 #[derive(Deserialize, Debug, Clone)]
 struct Weather {
     id: u32,
     description: String,
 }
-
 #[derive(Deserialize, Debug, Clone)] 
 struct Main {
     temp: f64,
@@ -55,19 +54,16 @@ struct Main {
     temp_min: f64,
     temp_max: f64,
 }
-
 #[derive(Deserialize, Debug)]
 struct Wind {
     speed: f64,
     deg: Option<f64>,
 }
-
 #[derive(Deserialize, Debug)]
 struct Sys {
     sunrise: i64,
     sunset: i64,
 }
-
 #[derive(Deserialize, Debug)]
 struct CurrentWeather {
     weather: Vec<Weather>,
@@ -76,10 +72,8 @@ struct CurrentWeather {
     wind: Wind,
     visibility: Option<f64>,
     dt: i64,
-    timezone: i64, // Timezone offset in seconds from UTC
+    timezone: i64, 
 }
-
-// --- location structs ---
 #[derive(Deserialize, Debug)]
 struct NominatimAddress {
     city: Option<String>,
@@ -88,72 +82,59 @@ struct NominatimAddress {
     state: Option<String>,
     country: Option<String>,
 }
-
 #[derive(Deserialize, Debug)]
 struct NominatimResponse {
     address: NominatimAddress,
 }
-
-// --- Structs for Forecast API ---
 #[derive(Deserialize, Debug)]
 struct ForecastItem {
-    dt: i64, // Timestamp
+    dt: i64,
     main: Main,
     weather: Vec<Weather>,
-    pop: f64, // Probability of precipitation
+    pop: f64,
 }
-
 #[derive(Deserialize, Debug)]
 struct Forecast {
     list: Vec<ForecastItem>,
 }
-
-
 // --- Get Location ---
-fn run_where_am_i() -> Result<Location> {
+async fn run_where_am_i() -> Result<Location> {
     let output = Command::new("/usr/lib/geoclue-2.0/demos/where-am-i")
         .output()
-        .context("Failed to run 'where-am-i' command")?;
+        .await
+        .context("Failed to run 'where-am-i' command, Is geoclue installed?")?;
     if !output.status.success() {
         anyhow::bail!("'where-am-i' command failed: {}", String::from_utf8_lossy(&output.stderr));
     }
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let lat_re = Regex::new(r"Latitude:\s*(-?\d+\.\d+)")?;
-    let lon_re = Regex::new(r"Longitude:\s*(-?\d+\.\d+)")?;
-    let acc_re = Regex::new(r"Accuracy:\s*(\d+\.?\d*)\s*meters")?;
+    let lat_re = LAT_RE.get_or_init(|| Regex::new(r"Latitude:\s*(-?\d+\.\d+)").unwrap());
+    let lon_re = LON_RE.get_or_init(|| Regex::new(r"Longitude:\s*(-?\d+\.\d+)").unwrap());
+    let acc_re = ACC_RE.get_or_init(|| Regex::new(r"Accuracy:\s*(\d+\.?\d*)\s*meters").unwrap());
     let lat_str = lat_re.captures(&stdout).context("Failed to parse Latitude")?[1].to_string();
     let lon_str = lon_re.captures(&stdout).context("Failed to parse Longitude")?[1].to_string();
     let acc_str = acc_re.captures(&stdout).context("Failed to parse Accuracy")?[1].to_string();
-    let location = Location {
+    Ok(Location {
         latitude: lat_str.parse()?,
         longitude: lon_str.parse()?,
         accuracy: acc_str.parse()?,
-    };
-    Ok(location)
+    })
 }
-
 fn get_cache_path() -> Result<PathBuf> {
     let mut path = dirs::cache_dir().context("Failed to find cache directory")?;
     path.push("weather_location.json");
     Ok(path)
 }
-
 fn write_to_cache(location: &Location) -> Result<()> {
     let path = get_cache_path()?;
     let json_data = serde_json::to_string(location)?;
     fs::write(path, json_data)?;
     Ok(())
 }
-
 fn read_from_cache() -> Result<Location> {
     let path = get_cache_path()?;
     let json_data = fs::read_to_string(path)?;
-    let location: Location = serde_json::from_str(&json_data)?;
-    Ok(location)
+    Ok(serde_json::from_str(&json_data)?)
 }
-
-// --- Get Icons and weather ---
-
 fn get_weather_icon(condition_id: u32, is_day: bool) -> &'static str {
     match condition_id {
         200..=299 => "󰖓", // Thunderstorm
@@ -174,11 +155,9 @@ async fn fetch_weather(client: &reqwest::Client, loc: &Location, api_key: &str) 
     );
     let response = client.get(&url)
         .send()
-        .await
-        .context("Failed to send OWM request")?
+        .await?
         .json::<CurrentWeather>()
-        .await
-        .context("Failed to parse OWM JSON response")?;
+        .await?;
     Ok(response)
 }
 
@@ -189,11 +168,9 @@ async fn get_city_state(client: &reqwest::Client, loc: &Location) -> Result<(Str
     );
     let response = client.get(&url)
         .send()
-        .await
-        .context("Failed to send Nominatim request")?
+        .await?
         .json::<NominatimResponse>()
-        .await
-        .context("Failed to parse Nominatim JSON response")?;
+        .await?;
     let addr = response.address;
     let city = addr.city.or(addr.town).or(addr.village)
         .unwrap_or_else(|| "Unknown City".to_string());
@@ -211,12 +188,9 @@ async fn fetch_forecast(client: &reqwest::Client, loc: &Location, api_key: &str)
 
     let response = client.get(&url)
         .send()
-        .await
-        .context("Failed to send OWM forecast request")?
+        .await?
         .json::<Forecast>()
-        .await
-        .context("Failed to parse OWM forecast JSON response")?;
-    
+        .await?;
     Ok(response)
 }
 
@@ -233,21 +207,15 @@ async fn main() -> Result<()> {
         .build()?;
 
     // --- Obtain Location ---
-    let location_result = run_where_am_i();
-    let location = match location_result {
-        Ok(fresh_location) => {
-            if fresh_location.accuracy < 1500.0 {
-                if let Err(e) = write_to_cache(&fresh_location) {
-                    eprintln!("Warning: Failed to write to cache: {}", e);
-                }
-                fresh_location
+    let location = match run_where_am_i().await {
+        Ok(fresh) => {
+            if fresh.accuracy < 1500.0 {
+                let _ = write_to_cache(&fresh);
+                fresh
             } else {
-                match read_from_cache() {
-                    Ok(cached_location) => cached_location,
-                    Err(_) => fresh_location,
-                }
+                   read_from_cache().unwrap_or(fresh) 
             }
-        },
+        }
         Err(e) => {
             eprintln!("'where-am-i' failed: {}. Trying cache...", e);
             read_from_cache().context("Failed to get fresh location AND failed to read cache")?
@@ -255,130 +223,88 @@ async fn main() -> Result<()> {
     };
 
     // --- Fetch API data ---
-    let (weather_result, geo_result, forecast_result) = tokio::join!(
+    let (weather_res, geo_res, forecast_res) = tokio::join!(
         fetch_weather(&http_client, &location, &api_key),
         get_city_state(&http_client, &location),
         fetch_forecast(&http_client, &location, &api_key)
     );
 
     // --- Display Results ---
-    let weather_data = match weather_result {
+    let weather_data = match weather_res {
         Ok(data) => data,
         Err(e) => {
-            let output_json = serde_json::json!({
+            println!("{}", serde_json::json!({
                 "text": "󰖕 API?",
                 "tooltip": format!("Failed to fetch weather: {}", e),
                 "class": "error"
-            });
-            println!("{}", output_json);
-            anyhow::bail!("Weather fetch failed: {}", e);
+            }));
+            return Ok(());
         }
     };
 
-    let (city, state) = match geo_result {
-        Ok((city, state)) => (city, state),
-        Err(e) => {
-            eprintln!("Warning: Failed to get city/state: {}", e);
-            ("Unknown City".to_string(), "Unknown State".to_string())
-        }
-    };
-    
-    // El pronóstico es opcional. Si falla, solo imprimimos un error a stderr.
-    let forecast_data = match forecast_result {
-        Ok(data) => Some(data),
-        Err(e) => {
-            eprintln!("Warning: Failed to get forecast data: {}", e);
-            None
-        }
-    };
-
-    // --- Construir el Tooltip Completo (¡MODIFICADO!) ---
+    let (city, state) = geo_res.unwrap_or(("Unknown".to_string(), "".to_string()));
+    let forecast_data = forecast_res.ok();
+    // --- Processing Display ---
     let now = SystemTime::now().duration_since(SystemTime::UNIX_EPOCH)?.as_secs() as i64;
     let is_day = now >= weather_data.sys.sunrise && now <= weather_data.sys.sunset;
     let icon = get_weather_icon(weather_data.weather[0].id, is_day);
 
-    let mut tooltip_parts = Vec::new();
-    tooltip_parts.push(format!(
+    let mut tooltip_lines = Vec::new();
+    tooltip_lines.push(format!(
         "<b>{}, {}</b> (Acc: ~{:.0}m)",
         city, state, location.accuracy
     ));
-    tooltip_parts.push(format!(
+    tooltip_lines.push(format!(
         "<span size=\"large\">{:.0}°F</span> {} <b>{}</b>",
         weather_data.main.temp, icon, weather_data.weather[0].description
     ));
-    tooltip_parts.push(format!(
+    tooltip_lines.push(format!(
         "<small>Feels like {:.0}°F</small>",
         weather_data.main.feels_like
     ));
-    tooltip_parts.push(format!(
+    tooltip_lines.push(format!(
         "Low {:.0}°F / High {:.0}°F",
         weather_data.main.temp_min, weather_data.main.temp_max
     ));
-    tooltip_parts.push("".to_string());
-    if let Some(deg) = weather_data.wind.deg {
-        tooltip_parts.push(format!(
-            "󰖝 Wind: {:.1} mph ({:.0}°)",
-            weather_data.wind.speed, deg
-        ));
-    } else {
-        tooltip_parts.push(format!(
-            "󰖝 Wind: {:.1} mph",
-            weather_data.wind.speed
-        ));
-    }
-    tooltip_parts.push(format!("󰖌 Humidity: {:.0}%", weather_data.main.humidity));
-    tooltip_parts.push(format!("󰥡 Pressure: {:.0} hPa", weather_data.main.pressure));
+    tooltip_lines.push(String::new());
+    let wind_dir = weather_data.wind.deg.map(|d| format!("({:.0}°)", d)).unwrap_or_default();
+    tooltip_lines.push(format!("󰖝 Wind: {:.1} mph {}", weather_data.wind.speed, wind_dir));
+    tooltip_lines.push(format!("󰖌 Humidity: {:.0}%", weather_data.main.humidity));
+    tooltip_lines.push(format!("󰥡 Pressure: {:.0} hPa", weather_data.main.pressure));
     if let Some(vis) = weather_data.visibility {
-        tooltip_parts.push(format!("󰖑 Visibility: {:.1} mi", vis / 1609.34));
+        tooltip_lines.push(format!("󰖑 Visibility: {:.1} mi", vis / 1609.34));
     }
 
-    // --- NUEVO: Bucle de Pronóstico ---
+    // --- Forecast Processing ---
     if let Some(forecast) = forecast_data {
-        tooltip_parts.push("\n--- Forecast (3hr) ---".to_string());
-        
-        // Crear el objeto timezone desde el offset de segundos
+        tooltip_lines.push("\n--- Forecast (3hr) ---".to_string());
         let tz_offset = FixedOffset::east_opt(weather_data.timezone as i32)
-            .unwrap_or_else(|| FixedOffset::east_opt(0).unwrap());
-
-        // Tomar solo los primeros 4 intervalos, igual que en Python
+            .unwrap_or(FixedOffset::east_opt(0).unwrap());
         for item in forecast.list.iter().take(4) {
-            // Convertir el timestamp UTC a un objeto DateTime
-            let dt = DateTime::from_timestamp(item.dt, 0).unwrap();
-            // Aplicar nuestro offset para obtener la hora local
-            let local_time = dt.with_timezone(&tz_offset);
-            
-            // Formatear la hora, p.ej. "09PM" -> "9PM"
-            let time_str = local_time.format("%I%p").to_string();
-            let time_str_clean = time_str.strip_prefix('0').unwrap_or(&time_str);
+            if let Some(dt) = DateTime::from_timestamp(item.dt, 0) {
+                let local_time = dt.with_timezone(&tz_offset);
+                let time_str = local_time.format("%I%p").to_string();
+                let time_clean = time_str.strip_prefix('0').unwrap_or(&time_str);
+                //Calculate day/night for forecast icon
+                let is_fc_day = item.dt >= weather_data.sys.sunrise && item.dt <= weather_data.sys.sunset;
+                let fc_icon = get_weather_icon(item.weather[0].id, is_fc_day);
+                let pop_percent = item.pop * 100.0;
 
-            // Determinar si es de día/noche para el ícono
-            let is_fc_day = item.dt >= weather_data.sys.sunrise && item.dt <= weather_data.sys.sunset;
-            let fc_icon = get_weather_icon(item.weather[0].id, is_fc_day);
-            let pop_percent = item.pop * 100.0;
-
-            tooltip_parts.push(format!(
-                "{}: {:.0}°F {} (󰖗 {:.0}%)",
-                time_str_clean, item.main.temp, fc_icon, pop_percent
-            ));
+                tooltip_lines.push(format!(
+                    "{}: {:.0}°F {} (󰖗 {:.0}%)",
+                    time_clean, item.main.temp, fc_icon, pop_percent
+                ));
+            }
         }
     }
-    // --- Fin del Bucle de Pronóstico ---
-
-    let tooltip = tooltip_parts.join("\n");
-    
-    let pango_re = Regex::new(r"</?b>|</b>|</?span.*?>|</?small>")?;
+    let tooltip = tooltip_lines.join("\n");
+    //----- Cache Strip (for Lockscreen/hyprlock) ---
+    let pango_re = PANGO_RE.get_or_init(|| Regex::new(r"</?b>|</b>|</?span.*?>|</?small>").unwrap());
     let cleaned_tooltip = pango_re.replace_all(&tooltip, "").to_string();
-    if let Some(mut cache_path) = dirs::cache_dir() {
-        cache_path.push(".weather_cache");
-
-        // 3. Escribir en el archivo
-        // Usamos un `if let Err` para que, si esto falla, no colapse todo el script.
-        // (p.ej., si los permisos son incorrectos). Simplemente imprimirá un error en stderr.
-        if let Err(e) = fs::write(&cache_path, cleaned_tooltip) {
-            eprintln!("Warning: Failed to write hyprlock cache file: {}", e);
-        }
+    if let Some(cache_dir) = dirs::cache_dir() {
+        let _ = fs::write(cache_dir.join(".weather_cache"), cleaned_tooltip);
     }
-    // --- Salida Final ---
+    // --- Final JSON Output ---
     let output_json = serde_json::json!({
         "text": format!("{:.0}°F {}", weather_data.main.temp, icon),
         "tooltip": tooltip,

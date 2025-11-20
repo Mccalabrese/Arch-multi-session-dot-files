@@ -1,7 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::channel;
-use::std::collections::HashSet;
+use std::collections::HashSet;
 use anyhow::{Context, Result};
 use dirs;
 use image::imageops::FilterType;
@@ -10,7 +10,15 @@ use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use walkdir::WalkDir;
 use toml;
-use shellexpand;
+
+fn expand_path(path: &str) -> PathBuf {
+    if path.starts_with("~/") {
+        if let Some(home) = dirs::home_dir() {
+            return home.join(&path[2..]);
+        }
+    }
+    PathBuf::from(path)
+}
 
 #[derive(Deserialize, Debug)]
 struct WallpaperManagerConfig {
@@ -28,10 +36,12 @@ struct GlobalConfig {
     wallpaper_manager: WallpaperManagerConfig,
 }
 fn load_config() -> Result<GlobalConfig> {
-    let config_path = shellexpand::tilde("~/.config/rust-dotfiles/config.toml").to_string();
+    let config_path = dirs::home_dir()
+        .context("Cannot find home dir")?
+        .join(".config/rust-dotfiles/config.toml");
 
     let config_str = fs::read_to_string(&config_path)
-        .with_context(|| format!("Failed to read config file from path: {}", config_path))?;
+        .with_context(|| format!("Failed to read config file from path: {}", config_path.display()))?;
 
     let config: GlobalConfig = toml::from_str(&config_str)
         .context("Failed to parse config.toml. Check for syntax errors.")?;
@@ -118,10 +128,8 @@ fn scan_and_update_cache(wall_dir: &Path, cache_file: &Path) -> Result<()> {
 fn main() -> Result<()> {
     let global_config = load_config()?;
     let config = global_config.wallpaper_manager;
-    let wall_dir_str = shellexpand::tilde(&config.wallpaper_dir).to_string();
-    let wall_dir = PathBuf::from(wall_dir_str);
-    let cache_file_str = shellexpand::tilde(&config.cache_file).to_string();
-    let cache_file = PathBuf::from(cache_file_str);
+    let wall_dir = expand_path(&config.wallpaper_dir);
+    let cache_file = expand_path(&config.cache_file);
     // Verify the directory exists
     if !wall_dir.exists() {
         anyhow::bail!("Wallpaper directory does not exist: {:?}", wall_dir);
