@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-serde_json = "1.0"
 anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 regex = "1.12.2"
+swayipc = "4.0.0"
