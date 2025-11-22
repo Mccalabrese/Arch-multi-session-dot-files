@@ -22,7 +22,7 @@
       "disk"
     ],
     "modules-center": [
-      "idle_inhibitor",
+      "custom/radio",
       "clock",
       "custom/hint",
       "custom/weather"
@@ -68,6 +68,7 @@
       "custom/discord"
     ],
     "modules-center": [
+      "idle_inhibitor",
       "wlr/taskbar"
     ],
     "modules-right": [

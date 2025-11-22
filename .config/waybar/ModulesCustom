@@ -93,6 +93,12 @@
 	"tooltip-format": "Left Click: Quick Tips",
 },
 
+"custom/radio": {
+    "format": " ",
+    "on-click": "$HOME/.cargo/bin/radio-menu",
+    "tooltip": true,
+    "tooltip-format": "Rofi Radio"
+},
 "custom/keyboard": {
 	"exec": "cat $HOME/.cache/kb_layout",
 	"interval": 1,

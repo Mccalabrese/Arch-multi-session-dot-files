@@ -27,8 +27,9 @@
     ],
     "modules-right": [
       "battery",
-      "custom/cycle_wall",
       "pulseaudio",
+      "custom/cycle_wall",
+      "custom/radio",
       "custom/menu",
       "custom/cloudflared",
       "tray",

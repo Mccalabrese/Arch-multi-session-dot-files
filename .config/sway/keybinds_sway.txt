@@ -12,6 +12,7 @@
 * Ctrl + Alt + P - Power Menu (power-menu)
 * $mod + Alt + C - Gnome Calculator
 * $mod + Alt + E - Emoji Selector
+* $mod + Alt + R - Rofi Internet Radio
 
 ## ⚙️ System & Session
 * $mod + Q       - Close Active Window

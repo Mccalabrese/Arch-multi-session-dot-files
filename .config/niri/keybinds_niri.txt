@@ -12,6 +12,7 @@
 * Ctrl + Alt + P  - Power Menu (power-menu)
 * Mod + Alt + C - Gnome Calculator
 * Mod + Alt + E - Emoji Selector
+* Mod + Alt + R - Rofi Internet Radio
 
 ## ⚙️ System & Session
 * Mod + Q         - Close Active Window
@@ -20,7 +21,7 @@
 * XF86Rfkill      - Toggle Airplane Mode
 * Mod + Shift + E - Quit Niri
 * Ctrl + Alt + Delete - Quit Niri
-* Mod + Alt + R   - Refresh Notification Center (swaync)
+* Mod + Alt + K   - Refresh Notification Center (swaync)
 * Mod + Alt + V - Rofi (Clipboard Manager)
 
 ## 🪟 Window & Column

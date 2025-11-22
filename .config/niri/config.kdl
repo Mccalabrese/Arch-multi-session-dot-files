@@ -204,7 +204,7 @@ binds {
     Mod+Alt+S hotkey-overlay-title="Lock and Suspend" {
         spawn-sh "pidof hyprlock >/dev/null || hyprlock & sleep 0.5; systemctl suspend"
     }
-    Mod+Alt+R { spawn-sh "pkill swaync && swaync"; }
+    Mod+Alt+K { spawn-sh "pkill swaync && swaync"; }
 
     // Focus Movement
     Mod+Left  { focus-column-left; }
@@ -305,6 +305,7 @@ binds {
     Mod+Shift+P { spawn-sh "$HOME/.cargo/bin/kb-launcher"; }
     Control+Alt+P { spawn-sh "$HOME/.cargo/bin/power-menu"; }
     Mod+Alt+E { spawn-sh "$HOME/.cargo/bin/emoji-picker"; }
+    Mod+Alt+R { spawn-sh "$HOME/.cargo/bin/radio-menu"; }
     // Exit Niri
     Mod+Shift+E { quit; }
     Ctrl+Alt+Delete { quit; } // Alt is Mod1

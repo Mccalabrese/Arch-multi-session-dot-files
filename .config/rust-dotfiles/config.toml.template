@@ -149,3 +149,7 @@ message = "CTRL+DEL = Delete Entry | ALT+DEL = Wipe History"
 [emoji_picker]
 rofi_config = "~/.config/rofi/config-emoji.rasi" 
 message = "Search Emojis (Name or Keyword)"
+
+[radio_menu]
+rofi_config = "~/.config/rofi/config-radio.rasi"
+message = "Radio Menu"

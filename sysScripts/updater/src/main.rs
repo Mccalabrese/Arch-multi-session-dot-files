@@ -14,7 +14,7 @@ fn expand_path(path: &str) -> PathBuf {
     }
     PathBuf::from(path)
 }
-// --- Config Structs ---
+// 🐧🐧🐧 Config Structs 🐧🐧🐧
 
 #[derive(Deserialize, Debug)]
 struct Global {
@@ -51,7 +51,7 @@ fn load_config() -> Result<GlobalConfig> {
     Ok(config)
 }
 
-// --- Helper Functions ---
+// 🐧🐧🐧 Helper Functions 🐧🐧🐧
 
 fn check_dependency(cmd: &str) -> bool {
     Command::new(cmd)

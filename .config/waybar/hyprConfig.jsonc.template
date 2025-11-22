@@ -22,7 +22,7 @@
       "disk"
     ],
     "modules-center": [
-      "idle_inhibitor",
+      "custom/radio",
       "clock",
       "custom/hint",
       "custom/weather"
@@ -69,6 +69,7 @@
       "wlr/taskbar"
     ],
     "modules-center": [
+      "idle_inhibitor",
       "hyprland/workspaces"
     ],
     "modules-right": [
