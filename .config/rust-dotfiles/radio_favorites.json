@@ -10,5 +10,11 @@
     "url_resolved": "https://vs-hls-push-ww-live.akamaized.net/x=4/i=urn:bbc:pips:service:bbc_news_channel_hd/t=3840/v=pv14/b=5070016/main.m3u8",
     "tags": "england,english,london,news,uk,world news",
     "stationuuid": "ea391ded-00f0-47e0-841c-d92663e11854"
+  },
+  {
+    "name": "Radio Caprice - Future Garage / Chillstep / Deep / Post Dubstep",
+    "url_resolved": "http://79.120.39.202:8002/futuregarage",
+    "tags": "chillstep,deep,future garage,post dubstep,radcap",
+    "stationuuid": "8715c311-ac15-45ba-8775-995747959b15"
   }
 ]
