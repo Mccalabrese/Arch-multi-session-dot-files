@@ -1,8 +1,20 @@
 use std::fs;
+use std::io::stdout;
 use anyhow::{Result, Context};
 use clap::Parser;
 use serde::{Deserialize, Serialize};
-use reqwest::header::HeaderMap;
+use crossterm::{
+    event::{self, KeyCode, KeyEventKind},
+    terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
+    ExecutableCommand,
+};
+use ratatui::{
+    prelude::{CrosstermBackend, Terminal},
+    widgets::{Block, Borders, Paragraph},
+    layout::*,
+    prelude::*,
+};
+
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -32,6 +44,24 @@ impl Default for Config {
                 "QQQ".to_string()
             ],
             api_key: None,
+        }
+    }
+}
+#[derive(Debug, Serialize)]
+struct WaybarOutput {
+    text: String,
+    tooltip: String,
+    class: String,
+}
+struct App {
+    stocks: Vec<String>,
+    should_quit: bool,
+}
+impl App {
+    fn new(config: Config) -> Self {
+        Self {
+            stocks: config.stocks,
+            should_quit: false,
         }
     }
 }
@@ -72,29 +102,91 @@ async fn run_waybar_mode(client: &reqwest::Client) -> Result<()> {
             return Ok(());
         }
     };
-    let mut outputs = Vec::new();
+    let mut text_parts = Vec::new();
+    let mut tooltip_parts = Vec::new();
     for symbol in &config.stocks {
         match fetch_quote(client, symbol, api_key).await {
             Ok(quote) => {
-                let text = format!("{} ${:.2}", symbol, quote.price);
-                outputs.push(text);
+                let (color, icon) = if quote.percent >= 0.0 {
+                    ("#a6e3a1", "")
+                } else {
+                    ("#f38ba8", "")
+                };
+                let part = format!(
+                    "<span color='{}'>{} {:.2} {}</span>",
+                    color, symbol, quote.price, icon
+                );
+                text_parts.push(part);
+                tooltip_parts.push(format!("{}: ${:.2} ({:.2}%)", symbol, quote.price, quote.percent));
             }
-            Err(e) => {
-                eprintln!("Failed to fetch {}: {}", symbol, e);
-                outputs.push(format!("{} ???", symbol));
+            Err(_) => {
+                text_parts.push(format!("<span color='#6c7086'>{} ???</span>", symbol));
             }
         }
     }
-    println!("{}", outputs.join(" | "));
+    let output = WaybarOutput {
+        text: text_parts.join(" "),
+        tooltip: tooltip_parts.join("\n"),
+        class: "finance".to_string(),
+    };
+    println!("{}", serde_json::to_string(&output)?);
+    Ok(())
+}
+fn ui(frame: &mut ratatui::Frame, app: &App) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(30),
+            Constraint::Min(0),
+        ])
+        .split(frame.area());
+    let left_block = Block::default()
+        .title("Watchlist")
+        .borders(Borders::ALL);
+    frame.render_widget(left_block, chunks[0]);
+    let right_block = Block::default()
+        .title("Chart")
+        .borders(Borders::ALL);
+    frame.render_widget(right_block, chunks[1]);
+
+}
+async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
+    let mut stdout = stdout();
+    stdout.execute(EnterAlternateScreen)?;
+    enable_raw_mode()?;
+    let backend = CrosstermBackend::new(stdout);
+    let mut terminal = Terminal::new(backend)?;
+    terminal.clear()?;
+
+    loop {
+        terminal.draw(|frame| {
+            ui(frame, &app);
+        })?;
+        if event::poll(std::time::Duration::from_millis(16))? {
+            if let event::Event::Key(key) = event::read()? {
+                if key.kind == KeyEventKind::Press && key.code == KeyCode::Char('q') {
+                    app.should_quit = true;
+                }
+            }
+        }
+        if app.should_quit {
+            break;
+        }
+    }
+    terminal.backend_mut().execute(LeaveAlternateScreen)?;
+    disable_raw_mode()?;
     Ok(())
 }
 #[tokio::main]
 async fn main() -> Result<()> {
     let client = reqwest::Client::new();
     let args = Args::parse();
-
+    let config_path = get_config_path()?;
+    let config = load_config(&config_path)?;
+    let mut app = App::new(config);
     if args.tui {
         println!("Initializing TUI mode...");
+        run_tui(&client, &mut app).await?
     } else {
         run_waybar_mode(&client).await?; 
     }
