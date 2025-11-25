@@ -91,14 +91,15 @@ All the helper scripts in this repo have been rewritten in Rust for maximum perf
     > **Do not update with my updater** unless you are prepared to reboot or get sent into a bios update.
     > If you are not comfortable with this, find the "let bash_script = format!(..)" block of updater/src/main.rs (line 113) and change it to:
 >
-    ```rust
-    let bash_script = format!("{} \n exit_code=$? \n echo -e '\\n\\n🏁 Update process finished. This window will close in 5 seconds.' \n sleep 5 \n exit $exit_code", update_cmd_str);
-    ```
+```rust
+let bash_script = format!("{} \n exit_code=$? \n echo -e '\\n\\n🏁 Update process finished. This window will close in 5 seconds.' \n sleep 5 \n exit $exit_code", update_cmd_str);
+```
 >
     > Then rebuild:
-    ```rust
-    cargo install --path .
-    ```
+
+```rust
+cargo install --path .
+```
 
 - **`power-menu`**: The graphical power menu (`Ctrl+Alt+P`). It's a compositor-aware launcher for `wlogout` that automatically calculates the correct screen position and scaling for Niri, Hyprland, and Sway.
 - **`rfkill-manager`**:
