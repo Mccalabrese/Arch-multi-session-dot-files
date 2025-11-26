@@ -2,7 +2,10 @@ use std::fs;
 use std::io::stdout;
 use anyhow::{Result, Context};
 use clap::Parser;
+use time::OffsetDateTime;
 use serde::{Deserialize, Serialize};
+use chrono::{Utc, TimeZone, Datelike, Duration, DateTime};
+use yahoo_finance_api::YahooConnector;
 use crossterm::{
     event::{self, KeyCode, KeyEventKind},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
@@ -10,10 +13,12 @@ use crossterm::{
 };
 use ratatui::{
     prelude::{CrosstermBackend, Terminal},
-    widgets::{Block, Borders, ListState, Paragraph, ListItem, List, Clear},
+    widgets::{Block, Borders, ListState, Paragraph, ListItem, List, Clear, Chart, Dataset, Axis, GraphType},
     layout::{Rect, Layout, Direction, Constraint},
     prelude::*,
+    style::{Color},
 };
+
 //We need different modes for keyboard input, search(edit) and normal
 //q when searching must be the letter and not quit
 #[derive(Debug, PartialEq)]
@@ -28,6 +33,13 @@ enum InputMode {
 struct Args {
     #[arg(short, long)]
     tui: bool,
+}
+//I need candle data for a real chart
+#[derive(Debug, Deserialize)]
+struct CandleResponse {
+    c: Vec<f64>,  //Closing prices
+    t: Vec<i64>, //timestamps
+    s: String,  //status
 }
 #[derive(Debug, Deserialize, Serialize)]
 struct Config {
@@ -71,9 +83,10 @@ struct App {
     input_mode: InputMode,
     message: String,
     message_color: Color,
+    stock_history: Option<Vec<(f64, f64)>>
 }
 impl App {
-    fn new(config: Config, message: String, message_color: Color) -> Self {
+    fn new(config: Config, message: String, message_color: Color, stock_history: Option<Vec<(f64, f64)>>) -> Self {
         let mut state = ListState::default();
         state.select(Some(0));
         Self {
@@ -86,6 +99,7 @@ impl App {
             input_mode: InputMode::Normal,
             message,
             message_color,
+            stock_history,
         }
     }
     pub fn next(&mut self) {
@@ -200,6 +214,21 @@ async fn run_waybar_mode(client: &reqwest::Client) -> Result<()> {
     println!("{}", serde_json::to_string(&output)?);
     Ok(())
 }
+async fn fetch_history(_client: &reqwest::Client, symbol: &str, _key: &str) -> Result<Vec<(f64, f64)>> {
+    let provider = YahooConnector::new()?;
+    let end = OffsetDateTime::now_utc();
+    let start = end - time::Duration::days(365);
+    let response = provider.get_quote_history(symbol, start, end).await
+        .context("Yaho API Error")?;
+    let quotes = response.quotes().context("No quotes in response")?;
+    let points: Vec<(f64, f64)> = quotes.iter()
+        .map(|q| (q.timestamp as f64, q.close))
+        .collect();
+    if points.is_empty() {
+        return Err(anyhow::anyhow!("History data is empty"));
+    }
+    Ok(points)
+}
 fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
@@ -248,14 +277,55 @@ fn ui(frame: &mut ratatui::Frame, app: &mut App) {
         .highlight_style(Style::default().bg(Color::Blue))
         .highlight_symbol(">> ");
     frame.render_stateful_widget(list, content_chunks[0], &mut app.state);
-    let right_content = if let Some(quote) = &app.current_quote {
-        format!("Price: ${:.2}\nChange: {:.2}%", quote.price, quote.percent)
+    if let Some(history) = &app.stock_history {
+        let first_price = history[0].1;
+        let last_price = history.last().unwrap().1;
+        let start_ts = history[0].0 as i64;
+        let end_ts = history.last().unwrap().0 as i64;
+        let start_date = DateTime::from_timestamp(start_ts, 0).unwrap_or_default();
+        let end_date = DateTime::from_timestamp(end_ts, 0).unwrap_or_default();
+        let start_label = start_date.format("%Y-%m-%d").to_string();
+        let end_label = end_date.format("%Y-%m-%d").to_string();
+        let chart_color = if last_price >= first_price {
+            Color::Green
+        } else {
+            Color::Red
+        };
+        let datasets = vec![
+            Dataset::default()
+                .marker(ratatui::symbols::Marker::Braille)
+                .graph_type(GraphType::Line)
+                .style(Style::default().fg(chart_color))
+                .data(history),
+        ];
+        //Find y axis bounds 
+        let min_price = history.iter().map(|(_, y)| *y).fold(f64::INFINITY, |a, b| a.min(b));
+        let max_price = history.iter().map(|(_, y)| *y).fold(f64::NEG_INFINITY, |a, b| a.max(b));
+        //Create the chart
+        let chart = Chart::new(datasets)
+            .block(Block::default().title("1 Year History").borders(Borders::ALL))
+            .x_axis(Axis::default()
+                .title("Date")
+                .style(Style::default().fg(Color::Gray))
+                .bounds([history[0].0, history.last().unwrap().0]) //these are times, start to end time
+                .labels(vec![
+                    Span::raw(start_label),
+                    Span::raw(end_label),
+                ]))
+            .y_axis(Axis::default()
+                .title("Price")
+                .style(Style::default().fg(Color::Gray))
+                .bounds([min_price, max_price])
+                .labels(vec![
+                    Span::raw(format!("{:.0}", min_price)),
+                    Span::raw(format!("{:.0}", max_price)),
+                ]));
+        frame.render_widget(chart, content_chunks[1]);
     } else {
-        String::from("Select a stock and press Enter to fetch quote.")
-    };
-    let right_paragraph = Paragraph::new(right_content)
-        .block(Block::default().title("Chart").borders(Borders::ALL));
-    frame.render_widget(right_paragraph, content_chunks[1]);
+        let placeholder = Paragraph::new("Press Enter to load Chart")
+            .block(Block::default().title("Chart").borders(Borders::ALL));
+        frame.render_widget(placeholder, content_chunks[1]);
+    }
     if app.input_mode == InputMode::Editing {
         let area = centered_rect(60, 20, frame.area());
         // 1. Clear the space
@@ -305,15 +375,31 @@ async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
                                 if let Some(selected) = app.state.selected() {
                                     let symbol = app.stocks[selected].clone();
                                     if let Some(api_key) = &app.api_key {
+                                        //loading message
+                                        app.message = format!("Loading{}...", symbol);
+                                        app.message_color = Color::Cyan;
+                                        //fetch Quote
                                         match fetch_quote(client, &symbol, api_key).await {
                                             Ok(quote) => {
                                                 app.current_quote = Some(quote);
+                                                app.message = format!("Loaded {}", symbol);
+                                                app.message_color = Color::Green;
+                                                //fetch history
+                                                match fetch_history(client, &symbol, api_key).await {
+                                                    Ok(history) => app.stock_history = Some(history),
+                                                    Err(e) => {
+                                                        app.stock_history = None;
+                                                        app.message = format!("Quote Ok, Chart failed: {}", e);
+                                                        app.message_color = Color::Yellow;
+                                                    }
+                                                }
                                             }
                                             Err(e) => {
                                                 app.message = format!("Error fetching quote for {}, {}", symbol, e);
                                                 app.message_color = Color::Red;
                                             }
                                         }
+                                       
                                     }
                                 }
                             }
@@ -343,6 +429,13 @@ async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
                                             //SUCCESS
                                             app.stocks.push(new_symbol.clone());
                                             app.current_quote = Some(quote);
+                                            match fetch_history(client, &new_symbol, app.api_key.as_ref().unwrap()).await {
+                                                Ok(history) => app.stock_history = Some(history),
+                                                Err(e) => {
+                                                    app.stock_history = None;
+                                                    app.message = format!("Added {}, but chart failed: {}", new_symbol, e);
+                                                }
+                                            }
                                             app.message = format!("Added {}", new_symbol);
                                             app.message_color = Color::Green;
                                             app.state.select(Some(app.stocks.len() - 1));
@@ -352,8 +445,7 @@ async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
                                             app.message = format!("Failed: Stock not found or API error. {}", e);
                                             app.message_color = Color::Red;
                                         }
-                                    }
-                                    //Reset Input
+                                    }                                    //Reset Input
                                     app.input.clear();
                                     app.input_mode = InputMode::Normal;
                                 }
@@ -405,7 +497,7 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     let config_path = get_config_path()?;
     let config = load_config(&config_path)?;
-    let mut app = App::new(config, String::from("Ready"), Color::Gray);
+    let mut app = App::new(config, String::from("Ready"), Color::Gray, None);
     if args.tui {
         println!("Initializing TUI mode...");
         run_tui(&client, &mut app).await?
