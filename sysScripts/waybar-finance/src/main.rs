@@ -10,11 +10,19 @@ use crossterm::{
 };
 use ratatui::{
     prelude::{CrosstermBackend, Terminal},
-    widgets::{Block, Borders, ListState, Paragraph, ListItem, List},
-    layout::*,
+    widgets::{Block, Borders, ListState, Paragraph, ListItem, List, Clear},
+    layout::{Rect, Layout, Direction, Constraint},
     prelude::*,
 };
-
+//We need different modes for keyboard input, search(edit) and normal
+//q when searching must be the letter and not quit
+#[derive(Debug, PartialEq)]
+enum InputMode {
+    Normal,
+    Editing,
+}
+//Bool to determine if we send a tooltip or launch the full TUI
+//controlled with -t or -tui flag
 #[derive(Debug, Parser)]
 #[command(author, version, about, long_about = None)]
 struct Args {
@@ -59,9 +67,13 @@ struct App {
     state: ListState,
     api_key: Option<String>,
     current_quote: Option<FinnhubQuote>,
+    input: String,
+    input_mode: InputMode,
+    message: String,
+    message_color: Color,
 }
 impl App {
-    fn new(config: Config) -> Self {
+    fn new(config: Config, message: String, message_color: Color) -> Self {
         let mut state = ListState::default();
         state.select(Some(0));
         Self {
@@ -70,6 +82,10 @@ impl App {
             state,
             api_key: config.api_key,
             current_quote: None,
+            input: String::new(),
+            input_mode: InputMode::Normal,
+            message,
+            message_color,
         }
     }
     pub fn next(&mut self) {
@@ -184,26 +200,54 @@ async fn run_waybar_mode(client: &reqwest::Client) -> Result<()> {
     println!("{}", serde_json::to_string(&output)?);
     Ok(())
 }
+fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
+    let popup_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Percentage((100 - percent_y) / 2),
+            Constraint::Percentage(percent_y),
+            Constraint::Percentage((100 - percent_y) / 2),
+        ])
+        .split(r);
+
+    Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage((100 - percent_x) / 2),
+            Constraint::Percentage(percent_x),
+            Constraint::Percentage((100 - percent_x) / 2),
+        ])
+        .split(popup_layout[1])[1]
+}
 fn ui(frame: &mut ratatui::Frame, app: &mut App) {
-    let watchlist: Vec<ListItem> = app
-        .stocks
-        .iter()
-        .map(|s| ListItem::new(s.as_str()))
-        .collect();
-    let chunks = Layout::default()
+    //verticle split for main vs footer
+    let main_layout = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints([
+            Constraint::Min(1),
+            Constraint::Length(1),
+        ])
+        .split(frame.area());
+    //horizontal split (List vs Chart)
+    let content_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Percentage(30),
             Constraint::Min(0),
         ])
-        .split(frame.area());
+        .split(main_layout[0]);
+    let watchlist: Vec<ListItem> = app
+        .stocks
+        .iter()
+        .map(|s| ListItem::new(s.as_str()))
+        .collect();
     let list = List::new(watchlist)
         .block(Block::default()
             .title("Watchlist")
             .borders(Borders::ALL))
         .highlight_style(Style::default().bg(Color::Blue))
         .highlight_symbol(">> ");
-    frame.render_stateful_widget(list, chunks[0], &mut app.state);
+    frame.render_stateful_widget(list, content_chunks[0], &mut app.state);
     let right_content = if let Some(quote) = &app.current_quote {
         format!("Price: ${:.2}\nChange: {:.2}%", quote.price, quote.percent)
     } else {
@@ -211,7 +255,21 @@ fn ui(frame: &mut ratatui::Frame, app: &mut App) {
     };
     let right_paragraph = Paragraph::new(right_content)
         .block(Block::default().title("Chart").borders(Borders::ALL));
-    frame.render_widget(right_paragraph, chunks[1]);
+    frame.render_widget(right_paragraph, content_chunks[1]);
+    if app.input_mode == InputMode::Editing {
+        let area = centered_rect(60, 20, frame.area());
+        // 1. Clear the space
+        frame.render_widget(Clear, area);
+        //draw input box
+        let input_block = Paragraph::new(app.input.as_str())
+            .block(Block::default()
+                .borders(Borders::ALL)
+                .title("Input Stock Ticker (Press Enter to Confirm, Esc to Cancel)"));
+        frame.render_widget(input_block, area);
+    }
+    let footer = Paragraph::new(app.message.as_str())
+        .style(Style::default().fg(app.message_color));
+    frame.render_widget(footer, main_layout[1]);
 
 }
 async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
@@ -229,41 +287,95 @@ async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
         if event::poll(std::time::Duration::from_millis(16))? {
             if let event::Event::Key(key_event) = event::read()? {
                 if key_event.kind == KeyEventKind::Press {
-                    match key_event.code {
-                        KeyCode::Char('q') => {
-                            app.should_quit = true;
-                        }
-                        KeyCode::Down => {
-                            app.next();
-                        }
-                        KeyCode::Up => {
-                            app.previous();
-                        }
-                        KeyCode::Enter => {
-                            if let Some(selected) = app.state.selected() {
-                                let symbol = app.stocks[selected].clone();
-                                if let Some(api_key) = &app.api_key {
-                                    match fetch_quote(client, &symbol, api_key).await {
-                                        Ok(quote) => {
-                                            app.current_quote = Some(quote);
-                                        }
-                                        Err(e) => {
-                                            eprintln!("Error fetching quote for {}: {}", symbol, e);
+                    match app.input_mode {
+                        InputMode::Normal => match key_event.code {
+                            KeyCode::Char('q') => {
+                                app.should_quit = true;
+                            }
+                            KeyCode::Char('a') => {
+                                app.input_mode = InputMode::Editing;
+                            }
+                            KeyCode::Down => {
+                                app.next();
+                            }
+                            KeyCode::Up => {
+                                app.previous();
+                            }
+                            KeyCode::Enter => {
+                                if let Some(selected) = app.state.selected() {
+                                    let symbol = app.stocks[selected].clone();
+                                    if let Some(api_key) = &app.api_key {
+                                        match fetch_quote(client, &symbol, api_key).await {
+                                            Ok(quote) => {
+                                                app.current_quote = Some(quote);
+                                            }
+                                            Err(e) => {
+                                                app.message = format!("Error fetching quote for {}, {}", symbol, e);
+                                                app.message_color = Color::Red;
+                                            }
                                         }
                                     }
                                 }
                             }
+                            KeyCode::Char('d') | KeyCode::Delete => {
+                                app.delete();
+                            }
+                            _ => {}
+
                         }
-                        KeyCode::Char('d') | KeyCode::Delete => {
-                            app.delete();
+                        InputMode::Editing => match key_event.code {
+                            KeyCode::Enter => {
+                                let new_symbol = app.input.trim().to_uppercase();
+                                if new_symbol.is_empty() {
+                                    return Ok(());
+                                }
+                                if app.stocks.contains(&new_symbol) {
+                                    app.message = format!("{} is already in the list!", new_symbol);
+                                    app.message_color = Color::Yellow;
+                                    app.input_mode = InputMode::Normal;
+                                    app.input.clear();
+                                } else {
+                                    //status loading
+                                    app.message = format!("Fetching {}...", new_symbol);
+                                    //try to fetch
+                                    match fetch_quote(client, &new_symbol, app.api_key.as_ref().unwrap()).await {
+                                        Ok(quote) => {
+                                            //SUCCESS
+                                            app.stocks.push(new_symbol.clone());
+                                            app.current_quote = Some(quote);
+                                            app.message = format!("Added {}", new_symbol);
+                                            app.message_color = Color::Green;
+                                            app.state.select(Some(app.stocks.len() - 1));
+                                        }
+                                        Err(e) => {
+                                            //FAILURE
+                                            app.message = format!("Failed: Stock not found or API error. {}", e);
+                                            app.message_color = Color::Red;
+                                        }
+                                    }
+                                    //Reset Input
+                                    app.input.clear();
+                                    app.input_mode = InputMode::Normal;
+                                }
+                            }
+                            KeyCode::Esc => {
+                                app.input.clear();
+                                app.input_mode = InputMode::Normal;
+                            }
+                            KeyCode::Char(c) => {
+                                app.input.push(c);
+                            }
+                            KeyCode::Backspace => {
+                                app.input.pop();
+                            }
+                            _ => {}
                         }
-                        _ => {}
-                    }
-                } 
+                    } 
+                }
             }
-        }
-        if app.should_quit {
+            if app.should_quit {
             break;
+            }
         }
     }
     terminal.backend_mut().execute(LeaveAlternateScreen)?;
@@ -271,6 +383,7 @@ async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
     //save new config
     save_config(app)?;
     Ok(())
+    
 }
 fn save_config(app: &App) -> Result<()> {
     let config_path = get_config_path()?;
@@ -292,7 +405,7 @@ async fn main() -> Result<()> {
     let args = Args::parse();
     let config_path = get_config_path()?;
     let config = load_config(&config_path)?;
-    let mut app = App::new(config);
+    let mut app = App::new(config, String::from("Ready"), Color::Gray);
     if args.tui {
         println!("Initializing TUI mode...");
         run_tui(&client, &mut app).await?
