@@ -3,6 +3,9 @@ use yahoo_finance_api::YahooConnector;
 use time::OffsetDateTime;
 use serde::{Deserialize, Serialize};
 use crate::config::{get_config_path, load_config};
+use crate::app::StockDetails;
+use chrono::{Utc, Datelike};
+use reqwest::Client;
 
 #[derive(Debug, Deserialize)]
 pub struct FinnhubQuote {
@@ -12,6 +15,35 @@ pub struct FinnhubQuote {
     pub percent: f64,
 }
 
+#[derive(Debug, Deserialize)]
+struct FinnhubMetricResponse {
+    metric: FinnhubMetrics,
+}
+
+#[derive(Debug, Deserialize)]
+struct FinnhubMetrics {
+    #[serde(rename = "marketCapitalization")]
+    market_cap: Option<f64>,
+    #[serde(rename = "peBasicExclExtraTTM")]
+    pe_ratio: Option<f64>,
+    #[serde(rename = "52WeekHigh")]
+    high_52w: Option<f64>,
+    #[serde(rename = "52WeekLow")]
+    low_52w: Option<f64>,
+    #[serde(rename = "beta")]
+    beta: Option<f64>,
+}
+
+#[derive(Debug, Deserialize)]
+struct FinnhubDividendResponse {
+    data: Vec<FinnhubDividend>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct FinnhubDividend {
+    amount: f64,
+}
+
 #[derive(Debug, Serialize)]
 pub struct WaybarOutput {
     pub text: String,
@@ -19,6 +51,30 @@ pub struct WaybarOutput {
     pub class: String,
 }
 
+pub async fn fetch_details(client: &reqwest::Client, symbol: &str, key: &str) -> Result<StockDetails> {
+    let url = format!(
+        "https://finnhub.io/api/v1/stock/metric?symbol={}&metric=all&token={}",
+        symbol, key
+    );
+    
+    let resp = client.get(&url).send().await?;
+    let data: FinnhubMetricResponse = resp.json().await?;
+
+    let quote = fetch_quote(client, symbol, key).await?;
+    let yield_finnhub = fetch_dividend_yield(client, symbol, key, quote.price).await?;
+    
+    Ok(StockDetails {
+        price: quote.price, // We get price from the Quote endpoint, not here
+        change_percent: quote.percent,
+        // Finnhub gives Market Cap in Millions usually
+        market_cap: data.metric.market_cap.unwrap_or(0.0) as u64,
+        pe_ratio: data.metric.pe_ratio,
+        dividend_yield: yield_finnhub,
+        high_52w: data.metric.high_52w.unwrap_or(0.0),
+        low_52w: data.metric.low_52w.unwrap_or(0.0),
+        beta: data.metric.beta,
+    })
+}
 
 pub async fn fetch_quote(client: &reqwest::Client, symbol: &str, key: &str) -> Result<FinnhubQuote> {
     let url = format!(
@@ -86,4 +142,36 @@ pub async fn run_waybar_mode(client: &reqwest::Client) -> Result<()> {
     };
     println!("{}", serde_json::to_string(&output)?);
     Ok(())
+}
+pub async fn fetch_dividend_yield(
+    client: &Client,
+    symbol: &str,
+    key: &str,
+    current_price: f64,
+) -> Result<Option<f64>> {
+    let end_year = Utc::now().year();
+    let start = format!("{}-01-01", end_year - 1);
+    let end = format!("{}-12-31", end_year);
+
+    let url = format!(
+        "https://finnhub.io/api/v1/stock/dividend?symbol={}&from={}&to={}&token={}",
+        symbol, start, end, key
+    );
+
+    let resp = client.get(&url).send().await?;
+    if !resp.status().is_success() {
+        return Ok(None);
+    }
+
+    let data: FinnhubDividendResponse = resp.json().await?;
+    if data.data.is_empty() {
+        return Ok(None);
+    }
+
+    let total: f64 = data.data.iter().map(|d| d.amount).sum();
+    let avg_div = total / data.data.len() as f64;
+    let annualized = avg_div * 4.0;
+    let yield_pct = (annualized / current_price) * 100.0;
+
+    Ok(Some(yield_pct))
 }

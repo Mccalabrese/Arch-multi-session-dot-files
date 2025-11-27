@@ -2,7 +2,7 @@ use ratatui::widgets::ListState;
 use ratatui::style::Color;
 use serde::{Deserialize, Serialize};
 
-use crate::network::FinnhubQuote;
+use crate::network::{fetch_quote, fetch_history, fetch_details, FinnhubQuote};
 
 //We need different modes for keyboard input, search(edit) and normal
 //q when searching must be the letter and not quit
@@ -10,6 +10,7 @@ use crate::network::FinnhubQuote;
 pub enum InputMode {
     Normal,
     Editing,
+    KeyEntry,
 }
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
@@ -40,7 +41,8 @@ pub struct App {
     pub input_mode: InputMode,
     pub message: String,
     pub message_color: Color,
-    pub stock_history: Option<Vec<(f64, f64)>>
+    pub stock_history: Option<Vec<(f64, f64)>>,
+    pub details: Option<StockDetails>,
 }
 
 
@@ -48,6 +50,16 @@ impl App {
     pub fn new(config: Config, message: String, message_color: Color, stock_history: Option<Vec<(f64, f64)>>) -> Self {
         let mut state = ListState::default();
         state.select(Some(0));
+        //check if API key exists
+        let (input_mode, msg, color) = if config.api_key.is_some() {
+            (InputMode::Normal, message, message_color)
+        } else {
+            (
+                InputMode::KeyEntry,
+                "Welcome! Please enter your Finnhub API Key.".to_string(),
+                Color::Yellow
+            )
+        };
         Self {
             stocks: config.stocks,
             should_quit: false,
@@ -55,10 +67,11 @@ impl App {
             api_key: config.api_key,
             current_quote: None,
             input: String::new(),
-            input_mode: InputMode::Normal,
-            message,
-            message_color,
+            input_mode,
+            message: msg,
+            message_color: color,
             stock_history,
+            details: None,
         }
     }
     pub fn next(&mut self) {
@@ -106,3 +119,15 @@ impl App {
         }
     }
 }
+#[derive(Debug, Clone)]
+pub struct StockDetails {
+    pub price: f64,
+    pub change_percent: f64,
+    pub market_cap: u64,
+    pub pe_ratio: Option<f64>,
+    pub dividend_yield: Option<f64>,
+    pub high_52w: f64,
+    pub low_52w: f64,
+    pub beta: Option<f64>,
+}
+
