@@ -16,5 +16,11 @@
     "url_resolved": "http://79.120.39.202:8002/futuregarage",
     "tags": "chillstep,deep,future garage,post dubstep,radcap",
     "stationuuid": "8715c311-ac15-45ba-8775-995747959b15"
+  },
+  {
+    "name": "Radio Art - Ludovico Einaudi",
+    "url_resolved": "https://live.radioart.com/fLudovico_einaudi.mp3",
+    "tags": "classical",
+    "stationuuid": "6de48439-be10-4811-a24a-27bf68b17001"
   }
 ]

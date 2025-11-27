@@ -2,7 +2,7 @@ use ratatui::widgets::ListState;
 use ratatui::style::Color;
 use serde::{Deserialize, Serialize};
 
-use crate::network::{fetch_quote, fetch_history, fetch_details, FinnhubQuote};
+use crate::network::{fetch_quote, fetch_history, fetch_details, FinnhubQuote, YahooSearchResult};
 
 //We need different modes for keyboard input, search(edit) and normal
 //q when searching must be the letter and not quit
@@ -43,6 +43,8 @@ pub struct App {
     pub message_color: Color,
     pub stock_history: Option<Vec<(f64, f64)>>,
     pub details: Option<StockDetails>,
+    pub search_results: Vec<YahooSearchResult>,
+    pub search_state: ListState,
 }
 
 
@@ -72,7 +74,35 @@ impl App {
             message_color: color,
             stock_history,
             details: None,
+            search_results: vec![],
+            search_state: ListState::default(),
         }
+    }
+    pub fn next_search(&mut self) {
+        let i = match self.search_state.selected() {
+            Some(i) => {
+                if i >= self.search_results.len().saturating_sub(1) {
+                    0
+                } else {
+                    i + 1
+                }
+            }
+            None => 0,
+        };
+        self.search_state.select(Some(i));
+    }
+    pub fn previous_search(&mut self) {
+        let i = match self.search_state.selected() {
+            Some(i) => {
+                if i == 0 {
+                    self.search_results.len().saturating_sub(1)
+                } else {
+                    i - 1
+                }
+            }
+            None => 0,
+        };
+        self.search_state.select(Some(i));
     }
     pub fn next(&mut self) {
         let i = match self.state.selected() {

@@ -15,7 +15,7 @@ use crossterm::{
 };
 use crate::app::{App, InputMode, StockDetails};
 use crate::config::save_config;
-use crate::network::{fetch_quote, fetch_details, fetch_history, FinnhubQuote};
+use crate::network::{fetch_quote, fetch_details, fetch_history, FinnhubQuote, YahooSearchResult};
 
 pub enum AppEvent {
     //Network results
@@ -23,6 +23,7 @@ pub enum AppEvent {
     HistoryFetched(String, Result<Vec<(f64, f64)>>),
     DetailsFetched(String, Result<StockDetails>),
     Input(crossterm::event::Event),
+    SearchResultsFetched(Vec<YahooSearchResult>),
     Tick,
 }
 
@@ -215,13 +216,116 @@ pub async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
                                         app.message = "Ready".to_string();
                                         app.message_color = Color::Gray;
                                     }
-                                    KeyCode::Char(c) => app.input.push(c),
-                                    KeyCode::Backspace => { app.input.pop(); },
+                                    KeyCode::Char(c) => {
+                                        app.input.push(c);
+                                        //trigger search
+                                        let query = app.input.clone();
+                                        let client_clone = client.clone();
+                                        let tx_clone = tx.clone();
+                                        let connector = yahoo_finance_api::YahooConnector::new().unwrap();
+                                        tokio::spawn(async move {
+                                            if query.len() > 1 {
+                                                if let Ok(results) = crate::network::search_ticker(&query).await {
+                                                    let _ = tx_clone.send(AppEvent::SearchResultsFetched(results));
+                                                }
+                                            }
+                                        });
+                                    }
+                                    KeyCode::Backspace => { app.input.pop(); }
+                                    KeyCode::Down => app.next_search(),
+                                    KeyCode::Up => app.previous_search(),
+                                    KeyCode::Enter => {
+                                        if let Some(idx) = app.search_state.selected() {
+                                            if idx < app.search_results.len() {
+                                                let new_symbol = app.search_results[idx].symbol.clone();
+                                                if !new_symbol.is_empty() {
+                                                    if app.stocks.contains(&new_symbol) {
+                                                        app.message = format!("{} exists!", new_symbol);
+                                                        app.message_color = Color::Yellow;
+                                                        app.input.clear();
+                                                        app.input_mode = InputMode::Normal;
+                                                    } else {
+                                                        if let Some(api_key) = &app.api_key {
+                                                            let client_clone = client.clone();
+                                                            let api_key_clone = api_key.clone();
+                                                            let tx_clone = tx.clone();
+                                                            let symbol = new_symbol.clone();
+
+                                                            app.message = format!("Adding {}...", symbol);
+                                                            app.stocks.push(symbol.clone());
+                                                            app.state.select(Some(app.stocks.len() - 1));
+                                                            app.input.clear();
+                                                            app.input_mode = InputMode::Normal;
+
+                                                            tokio::spawn(async move {
+                                                                let q_res = fetch_quote(&client_clone, &symbol, &api_key_clone).await;
+                                                                let _ = tx_clone.send(AppEvent::QuoteFetched(symbol.clone(), q_res));
+                                                        
+                                                                let h_res = fetch_history(&client_clone, &symbol, &api_key_clone).await;
+                                                                let _ = tx_clone.send(AppEvent::HistoryFetched(symbol.clone(), h_res));
+
+                                                                let d_res = fetch_details(&client_clone, &symbol, &api_key_clone).await;
+                                                                let _ = tx_clone.send(AppEvent::DetailsFetched(symbol.clone(), d_res));
+                                                            });
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                        } else {
+                                            let new_symbol = app.input.trim().to_uppercase();
+                                            if !new_symbol.is_empty() {
+                                                if app.stocks.contains(&new_symbol) {
+                                                    app.message = format!("{} exists!", new_symbol);
+                                                    app.message_color = Color::Yellow;
+                                                    app.input.clear();
+                                                    app.input_mode = InputMode::Normal;
+                                                } else {
+                                                    if let Some(api_key) = &app.api_key {
+                                                        let client_clone = client.clone();
+                                                        let api_key_clone = api_key.clone();
+                                                        let tx_clone = tx.clone();
+                                                        let symbol = new_symbol.clone();
+
+                                                        app.message = format!("Adding {}...", symbol);
+                                                        app.stocks.push(symbol.clone());
+                                                        app.state.select(Some(app.stocks.len() - 1));
+                                                        app.input.clear();
+                                                        app.input_mode = InputMode::Normal;
+
+                                                        tokio::spawn(async move {
+                                                            let q_res = fetch_quote(&client_clone, &symbol, &api_key_clone).await;
+                                                            let _ = tx_clone.send(AppEvent::QuoteFetched(symbol.clone(), q_res));
+                                                        
+                                                            let h_res = fetch_history(&client_clone, &symbol, &api_key_clone).await;
+                                                            let _ = tx_clone.send(AppEvent::HistoryFetched(symbol.clone(), h_res));
+
+                                                            let d_res = fetch_details(&client_clone, &symbol, &api_key_clone).await;
+                                                            let _ = tx_clone.send(AppEvent::DetailsFetched(symbol.clone(), d_res));
+                                                        });
+                                                    }
+                                                }
+                                            }
+
+                                        }
+                                        app.search_results.clear();
+                                        app.search_state.select(None);
+                                    }
                                     _ => {}
                                 }
                             }
                         }
                         _ => {}
+                    }
+                }
+                AppEvent::SearchResultsFetched(results) => {
+                    app.message = format!("Fetched {} results", results.len());
+                    app.message_color = Color::Cyan;
+                    app.search_results = results;
+                    if !app.search_results.is_empty() {
+                        app.search_state.select(Some(0));
+                    } else {
+                        app.search_state.select(None);
                     }
                 }
             }
@@ -410,15 +514,38 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
         frame.render_widget(Paragraph::new("Loading..."), col_chunks[1]);
     }
     if app.input_mode == InputMode::Editing {
-        let area = centered_rect(60, 20, frame.area());
+        let area = centered_rect(60, 40, frame.area());
         // 1. Clear the space
         frame.render_widget(Clear, area);
+        let chunks = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints([
+                Constraint::Length(3),
+                Constraint::Min(1),
+            ])
+            .split(area);
         //draw input box
         let input_block = Paragraph::new(app.input.as_str())
             .block(Block::default()
                 .borders(Borders::ALL)
                 .title("Input Stock Ticker (Press Enter to Confirm, Esc to Cancel)"));
-        frame.render_widget(input_block, area);
+        frame.render_widget(input_block, chunks[0]);
+        //draw Results
+        let items: Vec<ListItem> = app.search_results.iter()
+            .map(|r| {
+                let text = format!(
+                    "{:<8} | {:<10} | {}",
+                    r.symbol,
+                    r.quote_type.clone().unwrap_or_default(),
+                    r.name.clone().unwrap_or("Unknown".to_string())
+                );
+                ListItem::new(text)
+            })
+            .collect();
+        let results_list = List::new(items)
+            .block(Block::default().borders(Borders::ALL).title("Results"))
+            .highlight_style(Style::default().bg(Color::DarkGray).fg(Color::White));
+        frame.render_stateful_widget(results_list, chunks[1], &mut app.search_state);
     }
     if app.input_mode == InputMode::KeyEntry {
         let area = centered_rect(60, 20, frame.area());

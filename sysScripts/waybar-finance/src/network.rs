@@ -51,6 +51,54 @@ pub struct WaybarOutput {
     pub class: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct YahooSearchResponse {
+    pub quotes: Vec<YahooSearchResult>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct YahooSearchResult {
+    pub symbol: String,
+    #[serde(rename = "shortname")]
+    pub name: Option<String>,
+    #[serde(rename = "quoteType")]
+    pub quote_type: Option<String>,
+    #[serde(rename = "exchDisp")]
+    pub exchange: Option<String>,
+}
+
+
+pub async fn search_ticker(query: &str) -> Result<Vec<YahooSearchResult>> {
+    // Construct a "browser-like" reqwest client
+    let client = Client::builder()
+        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) \
+                     AppleWebKit/537.36 (KHTML, like Gecko) \
+                     Chrome/106 Safari/537.36")
+        .cookie_store(true)
+        .build()?;
+
+    let url = format!(
+        "https://query2.finance.yahoo.com/v1/finance/search?q={}&lang=en-US",
+        query
+    );
+
+    // send the GET request
+    let resp = client
+        .get(&url)
+        .header("Accept", "*/*")
+        .header("Accept-Language", "en-US,en;q=0.9")
+        .send()
+        .await?;
+
+    if !resp.status().is_success() {
+        return Err(anyhow::anyhow!("Search failed: {}", resp.status()));
+    }
+
+    let data: YahooSearchResponse = resp.json().await?;
+    Ok(data.quotes)
+}
+
+
 pub async fn fetch_details(client: &reqwest::Client, symbol: &str, key: &str) -> Result<StockDetails> {
     let url = format!(
         "https://finnhub.io/api/v1/stock/metric?symbol={}&metric=all&token={}",
