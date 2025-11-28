@@ -17,6 +17,7 @@
     "margin-left": 8,
     "margin-right": 8,
     "modules-left": [
+      "custom/radio",
       "clock",
       "custom/hint"
     ],
@@ -29,7 +30,7 @@
       "battery",
       "pulseaudio",
       "custom/cycle_wall",
-      "custom/radio",
+      "custom/finance",
       "custom/menu",
       "custom/cloudflared",
       "tray",

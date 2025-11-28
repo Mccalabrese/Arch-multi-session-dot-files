@@ -130,6 +130,13 @@ window-rule {
     open-floating true
 }
 
+window-rule {
+    match app-id="ghostty" title="waybar-finance"
+    open-floating true
+    default-column-width { fixed 1000; }
+    default-window-height { fixed 600; }
+}
+
 // Firefox PiP
 window-rule {
     match app-id=r"firefox$"
@@ -306,6 +313,7 @@ binds {
     Control+Alt+P { spawn-sh "$HOME/.cargo/bin/power-menu"; }
     Mod+Alt+E { spawn-sh "$HOME/.cargo/bin/emoji-picker"; }
     Mod+Alt+R { spawn-sh "$HOME/.cargo/bin/radio-menu"; }
+    Mod+Alt+F { spawn "ghostty" "--title=waybar-finance" "-e" "/home/michael/.cargo/bin/waybar-finance" "--tui"; }
     // Exit Niri
     Mod+Shift+E { quit; }
     Ctrl+Alt+Delete { quit; } // Alt is Mod1

@@ -73,6 +73,7 @@
       "hyprland/workspaces"
     ],
     "modules-right": [
+      "custom/finance",
       "hyprland/window",
       "custom/cloudflared",
       "tray",

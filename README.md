@@ -108,9 +108,7 @@ cargo install --path .
 - **`clip-manager`**: The clipboard history manager (`Mod+Alt+V`). It uses `cliphist` as a backend and pipes your selection to Rofi, allowing you to copy, delete, or wipe your clipboard history.
 - **`emoji-picker`**: The emoji selector (`Mod+Alt+E`). It uses a built-in Rust emoji database to give you a fast, searchable Rofi menu for copying any emoji.
 - **`radio-menu`**: A rofi based, extremely lightweight and low power consumption internet radio streaming tool that caches favorite stations for quick selection.
-- !!!---------------------------------------!!!
-- **`waybar-finance`** ⚠️**I am working on this, don't build it or touch it yet, it's far from complete, Im pushing it to keep personal backups of previous versions for my use**
-- !!!---------------------------------------!!!
+- **`waybar-finance`**: A lightweight TUI market watch list application with charts, and security details. Designed to be run in a terminal multiplexer like tmux or ghostty. This will request that you create and enter a Finnhub.io API key on first run. The app will display quoting of your watchlist items as a tooltip on hover over its icon in Waybar.
 
 # Installation Guide
 
@@ -285,6 +283,7 @@ cd sysScripts/rfkill-manager && cargo install --path .
 cd sysScripts/clip-manager && cargo install --path .
 cd sysScripts/emoji-picker && cargo install --path .
 cd sysScripts/radio-menu && cargo install --path .
+cd sysScripts/waybar-finance && cargo install --path .
 ```
 
 ## 5. Setting Up Your Configs & Secrets

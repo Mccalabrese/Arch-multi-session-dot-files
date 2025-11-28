@@ -9,34 +9,39 @@ use ratatui::{
     style::{Color},
 };
 use crossterm::{
-    event::{self, KeyCode, KeyEventKind},
+    event::{KeyCode, KeyEventKind},
     terminal::{disable_raw_mode, enable_raw_mode, EnterAlternateScreen, LeaveAlternateScreen},
     ExecutableCommand,
 };
-use crate::app::{App, InputMode, StockDetails};
+use crate::app::{App, InputMode, StockDetails, MarketStatus};
 use crate::config::save_config;
 use crate::network::{fetch_quote, fetch_details, fetch_history, FinnhubQuote, YahooSearchResult};
 
+/// Internal events for the application event loop.
 pub enum AppEvent {
-    //Network results
     QuoteFetched(String, Result<FinnhubQuote>),
     HistoryFetched(String, Result<Vec<(f64, f64)>>),
     DetailsFetched(String, Result<StockDetails>),
     Input(crossterm::event::Event),
     SearchResultsFetched(Vec<YahooSearchResult>),
+    MarketFetched(Result<MarketStatus>),
     Tick,
 }
-
+/// The main TUI run loop.
+/// Uses an async actor pattern:
+/// 1. Spawns a background task for input events (to prevent blocking).
+/// 2. Spawns a background task for Ticks (updates).
+/// 3. Main loop listens to the channel and updates the UI state.
 pub async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
     let mut stdout = stdout();
     stdout.execute(EnterAlternateScreen)?;
     enable_raw_mode()?;
     let backend = CrosstermBackend::new(stdout);
     let mut terminal = Terminal::new(backend)?;
-    //create event channel
+    //Channel for communication between background tasks and the main UI thread
     let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<AppEvent>();
     terminal.clear()?;
-    //start event tick task
+    // Heartbeat - 250ms redraw
     let tx_tick = tx.clone();
     tokio::spawn(async move {
         let mut interval = tokio::time::interval(std::time::Duration::from_millis(250));
@@ -47,7 +52,8 @@ pub async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
             }
         }
     });
-    //start input event task
+    // Input Listener - Runs in a blocking thread to capture crossterm events
+    // without freezing the async runtime.
     let tx_iput = tx.clone();
     tokio::task::spawn_blocking(move || {
         loop {
@@ -58,15 +64,41 @@ pub async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
             }
         }
     });
-    //main loop
+    let client_clone = client.clone();
+    let tx_clone = tx.clone();
+    tokio::spawn(async move {
+        let client = client_clone;
+        let tx = tx_clone;
+        loop {
+            match crate::network::fetch_market_status(&client).await {
+                Ok(status) => {
+                    let _ = tx.send(AppEvent::MarketFetched(Ok(status)));
+                    break;
+                }
+                Err(e) => {
+                    let _ = tx.send(AppEvent::MarketFetched(Err(e)));
+                    tokio::time::sleep(std::time::Duration::from_secs(5)).await;
+                }
+            }
+        }
+    });
+    //Main Event Loop
     loop {
+        // Render current state
         terminal.draw(|frame| {
             ui(frame, app);
         })?;
+        // Wait for next event
         if let Some(event) = rx.recv().await {
             match event {
                 AppEvent::Tick => {
                     //just let the loop spin, no action
+                }
+                AppEvent::MarketFetched(res) => {
+                    match res {
+                        Ok(status) => app.market_status = Some(status),
+                        Err(e) => eprintln!("Market status fetch error: {}", e),
+                    }
                 }
                 AppEvent::QuoteFetched(sym, res) => {
                     match res {
@@ -81,7 +113,7 @@ pub async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
                         }
                     }
                 }
-                AppEvent::HistoryFetched(sym, res) => {
+                AppEvent::HistoryFetched(_sym, res) => {
                     match res {
                         Ok(h) => app.stock_history = Some(h),
                         Err(_) => app.stock_history = None,
@@ -98,6 +130,7 @@ pub async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
                     }
                 }
                 AppEvent::Input(event) => {
+                    // Route input based on active mode (Normal vs Editing vs KeyEntry)
                     match event {
                         crossterm::event::Event::Paste(pasted_text) => {
                             app.input.push_str(&pasted_text);
@@ -132,7 +165,7 @@ pub async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
                                             }
                                         }
                                     }
-                                    KeyCode::Esc | KeyCode::Char('q') => {
+                                    KeyCode::Esc => {
                                         app.should_quit = true;
                                     }
                                     _ => {}
@@ -157,7 +190,8 @@ pub async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
                                                 
                                                 app.message = format!("Fetching {}...", symbol);
                                                 app.message_color = Color::Cyan;
-
+                                                // Trigger Async Data Fetch
+                                                // We spawn this so the UI doesn't freeze while waiting for HTTP
                                                 tokio::spawn(async move {
                                                     let q_res = fetch_quote(&client_clone, &symbol, &api_key_clone).await;
                                                     let _ = tx_clone.send(AppEvent::QuoteFetched(symbol.clone(), q_res));
@@ -183,30 +217,29 @@ pub async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
                                                 app.message_color = Color::Yellow;
                                                 app.input.clear();
                                                 app.input_mode = InputMode::Normal;
-                                            } else {
-                                                if let Some(api_key) = &app.api_key {
-                                                    let client_clone = client.clone();
-                                                    let api_key_clone = api_key.clone();
-                                                    let tx_clone = tx.clone();
-                                                    let symbol = new_symbol.clone();
+                                            } else if let Some(api_key) = &app.api_key {
+                                                let client_clone = client.clone();
+                                                let api_key_clone = api_key.clone();
+                                                let tx_clone = tx.clone();
+                                                let symbol = new_symbol.clone();
 
-                                                    app.message = format!("Adding {}...", symbol);
-                                                    app.stocks.push(symbol.clone());
-                                                    app.state.select(Some(app.stocks.len() - 1));
-                                                    app.input.clear();
-                                                    app.input_mode = InputMode::Normal;
+                                                app.message = format!("Adding {}...", symbol);
+                                                app.stocks.push(symbol.clone());
+                                                app.state.select(Some(app.stocks.len() - 1));
+                                                app.input.clear();
+                                                app.input_mode = InputMode::Normal;
+                                                // Trigger Async Data Fetch
+                                                // We spawn this so the UI doesn't freeze while waiting for HTTP
+                                                tokio::spawn(async move {
+                                                    let q_res = fetch_quote(&client_clone, &symbol, &api_key_clone).await;
+                                                    let _ = tx_clone.send(AppEvent::QuoteFetched(symbol.clone(), q_res));
+                                                    
+                                                    let h_res = fetch_history(&client_clone, &symbol, &api_key_clone).await;
+                                                    let _ = tx_clone.send(AppEvent::HistoryFetched(symbol.clone(), h_res));
 
-                                                    tokio::spawn(async move {
-                                                        let q_res = fetch_quote(&client_clone, &symbol, &api_key_clone).await;
-                                                        let _ = tx_clone.send(AppEvent::QuoteFetched(symbol.clone(), q_res));
-                                                        
-                                                        let h_res = fetch_history(&client_clone, &symbol, &api_key_clone).await;
-                                                        let _ = tx_clone.send(AppEvent::HistoryFetched(symbol.clone(), h_res));
-
-                                                        let d_res = fetch_details(&client_clone, &symbol, &api_key_clone).await;
-                                                        let _ = tx_clone.send(AppEvent::DetailsFetched(symbol.clone(), d_res));
-                                                    });
-                                                }
+                                                    let d_res = fetch_details(&client_clone, &symbol, &api_key_clone).await;
+                                                    let _ = tx_clone.send(AppEvent::DetailsFetched(symbol.clone(), d_res));
+                                                });
                                             }
                                         }
                                     }
@@ -222,10 +255,11 @@ pub async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
                                         let query = app.input.clone();
                                         let client_clone = client.clone();
                                         let tx_clone = tx.clone();
-                                        let connector = yahoo_finance_api::YahooConnector::new().unwrap();
+                                        // Trigger Async Data Fetch
+                                        // We spawn this so the UI doesn't freeze while waiting for HTTP
                                         tokio::spawn(async move {
                                             if query.len() > 1 {
-                                                if let Ok(results) = crate::network::search_ticker(&query).await {
+                                                if let Ok(results) = crate::network::search_ticker(&client_clone, &query).await {
                                                     let _ = tx_clone.send(AppEvent::SearchResultsFetched(results));
                                                 }
                                             }
@@ -234,83 +268,6 @@ pub async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
                                     KeyCode::Backspace => { app.input.pop(); }
                                     KeyCode::Down => app.next_search(),
                                     KeyCode::Up => app.previous_search(),
-                                    KeyCode::Enter => {
-                                        if let Some(idx) = app.search_state.selected() {
-                                            if idx < app.search_results.len() {
-                                                let new_symbol = app.search_results[idx].symbol.clone();
-                                                if !new_symbol.is_empty() {
-                                                    if app.stocks.contains(&new_symbol) {
-                                                        app.message = format!("{} exists!", new_symbol);
-                                                        app.message_color = Color::Yellow;
-                                                        app.input.clear();
-                                                        app.input_mode = InputMode::Normal;
-                                                    } else {
-                                                        if let Some(api_key) = &app.api_key {
-                                                            let client_clone = client.clone();
-                                                            let api_key_clone = api_key.clone();
-                                                            let tx_clone = tx.clone();
-                                                            let symbol = new_symbol.clone();
-
-                                                            app.message = format!("Adding {}...", symbol);
-                                                            app.stocks.push(symbol.clone());
-                                                            app.state.select(Some(app.stocks.len() - 1));
-                                                            app.input.clear();
-                                                            app.input_mode = InputMode::Normal;
-
-                                                            tokio::spawn(async move {
-                                                                let q_res = fetch_quote(&client_clone, &symbol, &api_key_clone).await;
-                                                                let _ = tx_clone.send(AppEvent::QuoteFetched(symbol.clone(), q_res));
-                                                        
-                                                                let h_res = fetch_history(&client_clone, &symbol, &api_key_clone).await;
-                                                                let _ = tx_clone.send(AppEvent::HistoryFetched(symbol.clone(), h_res));
-
-                                                                let d_res = fetch_details(&client_clone, &symbol, &api_key_clone).await;
-                                                                let _ = tx_clone.send(AppEvent::DetailsFetched(symbol.clone(), d_res));
-                                                            });
-                                                        }
-                                                    }
-                                                }
-                                            }
-
-                                        } else {
-                                            let new_symbol = app.input.trim().to_uppercase();
-                                            if !new_symbol.is_empty() {
-                                                if app.stocks.contains(&new_symbol) {
-                                                    app.message = format!("{} exists!", new_symbol);
-                                                    app.message_color = Color::Yellow;
-                                                    app.input.clear();
-                                                    app.input_mode = InputMode::Normal;
-                                                } else {
-                                                    if let Some(api_key) = &app.api_key {
-                                                        let client_clone = client.clone();
-                                                        let api_key_clone = api_key.clone();
-                                                        let tx_clone = tx.clone();
-                                                        let symbol = new_symbol.clone();
-
-                                                        app.message = format!("Adding {}...", symbol);
-                                                        app.stocks.push(symbol.clone());
-                                                        app.state.select(Some(app.stocks.len() - 1));
-                                                        app.input.clear();
-                                                        app.input_mode = InputMode::Normal;
-
-                                                        tokio::spawn(async move {
-                                                            let q_res = fetch_quote(&client_clone, &symbol, &api_key_clone).await;
-                                                            let _ = tx_clone.send(AppEvent::QuoteFetched(symbol.clone(), q_res));
-                                                        
-                                                            let h_res = fetch_history(&client_clone, &symbol, &api_key_clone).await;
-                                                            let _ = tx_clone.send(AppEvent::HistoryFetched(symbol.clone(), h_res));
-
-                                                            let d_res = fetch_details(&client_clone, &symbol, &api_key_clone).await;
-                                                            let _ = tx_clone.send(AppEvent::DetailsFetched(symbol.clone(), d_res));
-                                                        });
-                                                    }
-                                                }
-                                            }
-
-                                        }
-                                        app.search_results.clear();
-                                        app.search_state.select(None);
-                                    }
                                     _ => {}
                                 }
                             }
@@ -338,10 +295,9 @@ pub async fn run_tui(client: &reqwest::Client, app: &mut App) -> Result<()> {
             std::process::exit(0);
         }
     }
-    Ok(())
 }
 
-
+/// TUI layout helper: Create a centered rectangle with given percentage width and height
 pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
     let popup_layout = Layout::default()
         .direction(Direction::Vertical)
@@ -362,23 +318,27 @@ pub fn centered_rect(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
         .split(popup_layout[1])[1]
 }
 
+/// Renders the UI widgets using Ratatui.
+/// Uses a nested layout strategy (Vertical -> Horizontal -> Inner).
 pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
-    //verticle split for main vs footer
+    //verticle split for (banner | main | footer)
     let main_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
+            Constraint::Length(1),
             Constraint::Min(1),
             Constraint::Length(1),
         ])
         .split(frame.area());
-    //horizontal split (List vs Chart)
+    //horizontal split (Watchlist | Details)
     let content_chunks = Layout::default()
         .direction(Direction::Horizontal)
         .constraints([
             Constraint::Percentage(30),
             Constraint::Min(0),
         ])
-        .split(main_layout[0]);
+        .split(main_layout[1]);
+    //Vertical split for right side (Chart | Fundamentals)
     let right_chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints([
@@ -398,6 +358,23 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
         .highlight_style(Style::default().bg(Color::Blue))
         .highlight_symbol(">> ");
     frame.render_stateful_widget(list, content_chunks[0], &mut app.state);
+    if let Some(status) = &app.market_status {
+        let spread = status.spread_10y_3m();
+        let spread_color = if spread < 0.0 { Color::Red } else { Color::Green };
+        
+        let banner_text = Line::from(vec![
+            Span::styled(" TREASURY YIELDS: ", Style::default().fg(Color::Yellow).add_modifier(Modifier::BOLD)),
+            Span::raw(format!("13W: {:.2}%  ", status.yield_3m)),
+            Span::raw(format!("5Y: {:.2}%  ", status.yield_5y)),
+            Span::raw(format!("10Y: {:.2}%  ", status.yield_10y)),
+            Span::styled("| ", Style::default().fg(Color::DarkGray)),
+            Span::styled(format!("10Y-3M Spread: {:.2}%", spread), Style::default().fg(spread_color)),
+        ]);
+        
+        frame.render_widget(Paragraph::new(banner_text), main_layout[0]);
+    } else {
+        frame.render_widget(Paragraph::new("Loading Market Data...").style(Style::default().fg(Color::DarkGray)), main_layout[0]);
+    }
     if let Some(history) = &app.stock_history {
         let first_price = history[0].1;
         let last_price = history.last().unwrap().1;
@@ -475,9 +452,6 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
         };
 
         // COLUMN 1: Price Action
-        // We need the current price. If we fetched details, we likely have the quote too.
-        // Let's grab price from app.current_quote or details if you added it there.
-        // Assuming app.current_quote is available:
         let price_str = if let Some(q) = &app.current_quote {
             format!("${:.2}", q.price)
         } else {
@@ -492,15 +466,14 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
 
         // COLUMN 2: Valuation
         let col2_text = vec![
-            Line::from(vec![Span::styled("Mkt Cap:  ", Style::default().fg(Color::Gray)), Span::raw(format!("${:.2}B", details.market_cap as f64 / 1_000.0))]), // Billions
+            Line::from(vec![Span::styled("Mkt Cap:  ", Style::default().fg(Color::Gray)), Span::raw(format!("${:.2}B", details.market_cap as f64 / 1_000_000_000.0))]), // Billions
             Line::from(vec![Span::styled("P/E Ratio:", Style::default().fg(Color::Gray)), Span::raw(fmt_num(details.pe_ratio, ""))]),
             Line::from(vec![Span::styled("Div Yield:", Style::default().fg(Color::Gray)), Span::raw(fmt_num(details.dividend_yield, "%"))]),
         ];
 
         // COLUMN 3: Volatility / Extra
         let col3_text = vec![
-            Line::from(vec![Span::styled("Beta:     ", Style::default().fg(Color::Gray)), Span::raw(fmt_num(details.beta, ""))]),
-            // Add more fields here later (e.g., Volume, EPS)
+            Line::from(vec![Span::styled("YTD Ret:     ", Style::default().fg(Color::Gray)), Span::raw(fmt_num(details.year_return, "%"))]),
             Line::from(vec![Span::styled("Status:   ", Style::default().fg(Color::Gray)), Span::styled("Active", Style::default().fg(Color::Green))]),
         ];
 
@@ -511,7 +484,7 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
 
     } else {
         // If no details loaded yet, show loading in the middle column
-        frame.render_widget(Paragraph::new("Loading..."), col_chunks[1]);
+        frame.render_widget(Paragraph::new("🐧🐧🐧"), col_chunks[1]);
     }
     if app.input_mode == InputMode::Editing {
         let area = centered_rect(60, 40, frame.area());
@@ -558,9 +531,31 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
                 .title("Enter Finnhub API Key. This is an app requirement. Visit finnhub.io/register to obtain a key. (Press Enter to Save)"));
         frame.render_widget(input_block, area);
     }
-    let footer = Paragraph::new(app.message.as_str())
+    // Split the Footer Area (Left for Status, Right for Hints)
+    let footer_chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([
+            Constraint::Percentage(50), // Status
+            Constraint::Percentage(50), // Hints
+        ])
+        .split(main_layout[2]);
+
+    // 1. Status Message (Left)
+    let status = Paragraph::new(app.message.as_str())
         .style(Style::default().fg(app.message_color));
-    frame.render_widget(footer, main_layout[1]);
+    frame.render_widget(status, footer_chunks[0]);
+
+    // 2. Key Hints (Right, Right-Aligned)
+    let hints_text = match app.input_mode {
+        InputMode::Normal => "q:Quit  a:Add  d:Del  ↓/↑:Nav  Enter:Select",
+        InputMode::Editing => "Enter:Confirm  Esc:Cancel",
+        InputMode::KeyEntry => "Enter:Save  Esc:Quit",
+    };
+
+    let hints = Paragraph::new(hints_text)
+        .style(Style::default().fg(Color::DarkGray))
+        .alignment(ratatui::layout::Alignment::Right);
+    frame.render_widget(hints, footer_chunks[1]);
 
 }
 

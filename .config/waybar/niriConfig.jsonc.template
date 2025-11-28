@@ -72,6 +72,7 @@
       "wlr/taskbar"
     ],
     "modules-right": [
+      "custom/finance",
       "tray",
       "custom/cloudflared",
       "custom/lock",

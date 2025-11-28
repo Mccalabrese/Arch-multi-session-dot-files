@@ -1,47 +1,20 @@
+use std::sync::OnceLock;
+use tokio::sync::Mutex;
 use anyhow::{Result, Context};
 use yahoo_finance_api::YahooConnector;
 use time::OffsetDateTime;
 use serde::{Deserialize, Serialize};
 use crate::config::{get_config_path, load_config};
-use crate::app::StockDetails;
-use chrono::{Utc, Datelike};
-use reqwest::Client;
+use crate::app::{StockDetails, MarketStatus};
+
 
 #[derive(Debug, Deserialize)]
 pub struct FinnhubQuote {
     #[serde(rename = "c")]
     pub price: f64,
+
     #[serde(rename = "dp")]
     pub percent: f64,
-}
-
-#[derive(Debug, Deserialize)]
-struct FinnhubMetricResponse {
-    metric: FinnhubMetrics,
-}
-
-#[derive(Debug, Deserialize)]
-struct FinnhubMetrics {
-    #[serde(rename = "marketCapitalization")]
-    market_cap: Option<f64>,
-    #[serde(rename = "peBasicExclExtraTTM")]
-    pe_ratio: Option<f64>,
-    #[serde(rename = "52WeekHigh")]
-    high_52w: Option<f64>,
-    #[serde(rename = "52WeekLow")]
-    low_52w: Option<f64>,
-    #[serde(rename = "beta")]
-    beta: Option<f64>,
-}
-
-#[derive(Debug, Deserialize)]
-struct FinnhubDividendResponse {
-    data: Vec<FinnhubDividend>,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct FinnhubDividend {
-    amount: f64,
 }
 
 #[derive(Debug, Serialize)]
@@ -59,24 +32,98 @@ pub struct YahooSearchResponse {
 #[derive(Debug, Deserialize, Clone)]
 pub struct YahooSearchResult {
     pub symbol: String,
+
     #[serde(rename = "shortname")]
     pub name: Option<String>,
+
     #[serde(rename = "quoteType")]
     pub quote_type: Option<String>,
-    #[serde(rename = "exchDisp")]
-    pub exchange: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+struct YahooQuoteResponse {
+    #[serde(rename = "quoteResponse")]
+    quote_response: QuoteResult,
+}
 
-pub async fn search_ticker(query: &str) -> Result<Vec<YahooSearchResult>> {
-    // Construct a "browser-like" reqwest client
-    let client = Client::builder()
-        .user_agent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) \
-                     AppleWebKit/537.36 (KHTML, like Gecko) \
-                     Chrome/106 Safari/537.36")
-        .cookie_store(true)
-        .build()?;
+#[derive(Debug, Deserialize)]
+struct QuoteResult {
+    result: Vec<YahooQuote>,
+}
 
+#[derive(Debug, Deserialize)]
+struct YahooQuote {
+    #[serde(rename = "marketCap")]
+    market_cap: Option<f64>,
+
+    #[serde(rename = "netAssets")]
+    net_assets: Option<f64>,
+
+    #[serde(rename = "trailingPE")]
+    pe_ratio: Option<f64>,
+
+    #[serde(rename = "dividendYield")] 
+    dividend_yield: Option<f64>, 
+
+    #[serde(rename = "trailingAnnualDividendYield")]
+    trailing_yield: Option<f64>,
+
+    #[serde(rename = "fiftyTwoWeekHigh")]
+    high_52w: Option<f64>,
+
+    #[serde(rename = "fiftyTwoWeekLow")]
+    low_52w: Option<f64>,
+    
+    #[serde(rename = "ytdReturn")]
+    ytd_return: Option<f64>,
+
+    #[serde(rename = "fiftyTwoWeekChangePercent")]
+    fifty_two_week_change: Option<f64>,
+
+    symbol: String,
+
+    #[serde(rename = "regularMarketPrice")]
+    regular_market_price: Option<f64>,
+}
+
+// Global cache for the yahoo crumb to avoid re-fetching each request.
+static YAHOO_CRUMB: OnceLock<Mutex<Option<String>>> = OnceLock::new();
+
+async fn get_yahoo_crumb(client: &reqwest::Client) -> Result<String> {
+    // Check cache first
+    let mutex = YAHOO_CRUMB.get_or_init(|| Mutex::new(None));
+    let mut lock = mutex.lock().await;
+    
+    if let Some(c) = &*lock {
+        return Ok(c.clone());
+    }
+
+    // Handshake - Get Cookies
+    let _ = client.get("https://fc.yahoo.com")
+        .header("Accept", "*/*")
+        .send().await;
+
+    // Handshake - Ask for the Crumb
+    let resp = client.get("https://query1.finance.yahoo.com/v1/test/getcrumb")
+        .header("Accept", "*/*")
+        .send()
+        .await?;
+    // ... error handling ...
+    if !resp.status().is_success() {
+        return Err(anyhow::anyhow!("Failed to get crumb: {}", resp.status()));
+    }
+
+    let crumb = resp.text().await?;
+    
+    // Handshake - Cache it
+    *lock = Some(crumb.clone());
+    
+    Ok(crumb)
+}
+
+/// Fetches search results from Yahoo Finance's search endpoint.
+/// Handles basic symbol search.
+pub async fn search_ticker(client: &reqwest::Client, query: &str) -> Result<Vec<YahooSearchResult>> {
     let url = format!(
         "https://query2.finance.yahoo.com/v1/finance/search?q={}&lang=en-US",
         query
@@ -98,32 +145,57 @@ pub async fn search_ticker(query: &str) -> Result<Vec<YahooSearchResult>> {
     Ok(data.quotes)
 }
 
-
-pub async fn fetch_details(client: &reqwest::Client, symbol: &str, key: &str) -> Result<StockDetails> {
+/// Fetches detailed metrics (P/E, Yield, etc.) from Yahoo's v7 endpoint.
+/// Handles the differences between Stocks (using Dividend Yield) and ETFs (using 12-Mo Yield).
+pub async fn fetch_details(client: &reqwest::Client, symbol: &str, _key: &str) -> Result<StockDetails> {
+    let crumb = get_yahoo_crumb(client).await?; 
+    
     let url = format!(
-        "https://finnhub.io/api/v1/stock/metric?symbol={}&metric=all&token={}",
-        symbol, key
+        "https://query1.finance.yahoo.com/v7/finance/quote?symbols={}&crumb={}",
+        symbol, crumb
     );
-    
-    let resp = client.get(&url).send().await?;
-    let data: FinnhubMetricResponse = resp.json().await?;
 
-    let quote = fetch_quote(client, symbol, key).await?;
-    let yield_finnhub = fetch_dividend_yield(client, symbol, key, quote.price).await?;
+    let resp = client.get(&url).send().await?;
     
+    if !resp.status().is_success() {
+        return Err(anyhow::anyhow!("Yahoo Error: {}", resp.status()));
+    }
+
+    let data: YahooQuoteResponse = resp.json().await?;
+    
+    if data.quote_response.result.is_empty() {
+        return Err(anyhow::anyhow!("No data found"));
+    }
+
+    let q = &data.quote_response.result[0];
+    
+    // Polymorphic Field Logic:
+    // Different asset classes (Stocks vs ETFs) store yield in different fields.
+    // We try them in order of specificity.
+    let final_yield = if let Some(y) = q.dividend_yield {
+        Some(y)
+    } else { q.trailing_yield.map(|y| y * 100.0) };
+
+    // Fallback for Market Cap (ETFs use Net Assets)
+    let mkt_cap = q.market_cap.or(q.net_assets).unwrap_or(0.0) as u64;
+
+    // PERFORMANCE LOGIC:
+    // 1. Try YTD (Common for ETFs, usually formatted as 5.0 for 5%)
+    // 2. Try 52W Change (Common for Stocks, usually formatted as 0.05 for 5%)
+    let perf = if let Some(ytd) = q.ytd_return {
+        Some(ytd)
+    } else { q.fifty_two_week_change };
+
     Ok(StockDetails {
-        price: quote.price, // We get price from the Quote endpoint, not here
-        change_percent: quote.percent,
-        // Finnhub gives Market Cap in Millions usually
-        market_cap: data.metric.market_cap.unwrap_or(0.0) as u64,
-        pe_ratio: data.metric.pe_ratio,
-        dividend_yield: yield_finnhub,
-        high_52w: data.metric.high_52w.unwrap_or(0.0),
-        low_52w: data.metric.low_52w.unwrap_or(0.0),
-        beta: data.metric.beta,
+        market_cap: mkt_cap,
+        pe_ratio: q.pe_ratio,
+        dividend_yield: final_yield,
+        high_52w: q.high_52w.unwrap_or(0.0),
+        low_52w: q.low_52w.unwrap_or(0.0),
+        year_return: perf,
     })
 }
-
+/// Fetches real-time stock quote from Finnhub API.
 pub async fn fetch_quote(client: &reqwest::Client, symbol: &str, key: &str) -> Result<FinnhubQuote> {
     let url = format!(
         "https://finnhub.io/api/v1/quote?symbol={}&token={}",
@@ -136,6 +208,9 @@ pub async fn fetch_quote(client: &reqwest::Client, symbol: &str, key: &str) -> R
     let quote: FinnhubQuote = resp.json().await?;
     Ok(quote)
 }
+/// Fetches historical stock data from Yahoo Finance API.
+/// The data points are returned as a vector of (timestamp, close price) tuples.
+/// Used by the charting component.
 pub async fn fetch_history(_client: &reqwest::Client, symbol: &str, _key: &str) -> Result<Vec<(f64, f64)>> {
     let provider = YahooConnector::new()?;
     let end = OffsetDateTime::now_utc();
@@ -151,6 +226,8 @@ pub async fn fetch_history(_client: &reqwest::Client, symbol: &str, _key: &str) 
     }
     Ok(points)
 }
+/// Uses the Finnhub API to fetch real-time stock quotes for all symbols
+/// Outputs the data in Waybar-compatible JSON format.
 pub async fn run_waybar_mode(client: &reqwest::Client) -> Result<()> {
     let config_path = get_config_path()?;
     let config = load_config(&config_path)?;
@@ -176,7 +253,10 @@ pub async fn run_waybar_mode(client: &reqwest::Client) -> Result<()> {
                     color, symbol, quote.price, icon
                 );
                 text_parts.push(part);
-                tooltip_parts.push(format!("{}: ${:.2} ({:.2}%)", symbol, quote.price, quote.percent));
+                tooltip_parts.push(format!(
+                    "<span color='{}'>{}: ${:.2} ({:.2}%)</span>", 
+                    color, symbol, quote.price, quote.percent
+                ));
             }
             Err(_) => {
                 text_parts.push(format!("<span color='#6c7086'>{} ???</span>", symbol));
@@ -191,35 +271,46 @@ pub async fn run_waybar_mode(client: &reqwest::Client) -> Result<()> {
     println!("{}", serde_json::to_string(&output)?);
     Ok(())
 }
-pub async fn fetch_dividend_yield(
-    client: &Client,
-    symbol: &str,
-    key: &str,
-    current_price: f64,
-) -> Result<Option<f64>> {
-    let end_year = Utc::now().year();
-    let start = format!("{}-01-01", end_year - 1);
-    let end = format!("{}-12-31", end_year);
+/// Fetches market status including yields for 10Y, 5Y, and 3M Treasuries from Yahoo Finance.
+/// Used for displaying yield data and yield curve in app's top banner.
+pub async fn fetch_market_status(client: &reqwest::Client) -> Result<MarketStatus> {
+    // 1. Get Crumb
+    let crumb = get_yahoo_crumb(client).await?;
 
+    // 2. Batch Request
     let url = format!(
-        "https://finnhub.io/api/v1/stock/dividend?symbol={}&from={}&to={}&token={}",
-        symbol, start, end, key
+        "https://query1.finance.yahoo.com/v7/finance/quote?symbols=^TNX,^FVX,^IRX&crumb={}",
+        crumb
     );
 
     let resp = client.get(&url).send().await?;
+    
     if !resp.status().is_success() {
-        return Ok(None);
+        return Err(anyhow::anyhow!("Yields Error: {}", resp.status()));
     }
 
-    let data: FinnhubDividendResponse = resp.json().await?;
-    if data.data.is_empty() {
-        return Ok(None);
+    let data: YahooQuoteResponse = resp.json().await?;
+    let results = data.quote_response.result;
+
+    // 3. Map results
+    // We need to find which is which because lists aren't always ordered
+    let mut y10 = 0.0;
+    let mut y5 = 0.0;
+    let mut y3m = 0.0;
+
+    for q in results {
+        let val = q.regular_market_price.unwrap_or(0.0); // We need to add regularMarketPrice to YahooQuote struct!
+        match q.symbol.as_str() {
+            "^TNX" => y10 = val,
+            "^FVX" => y5 = val,
+            "^IRX" => y3m = val,
+            _ => {}
+        }
     }
 
-    let total: f64 = data.data.iter().map(|d| d.amount).sum();
-    let avg_div = total / data.data.len() as f64;
-    let annualized = avg_div * 4.0;
-    let yield_pct = (annualized / current_price) * 100.0;
-
-    Ok(Some(yield_pct))
+    Ok(MarketStatus {
+        yield_10y: y10,
+        yield_5y: y5,
+        yield_3m: y3m,
+    })
 }

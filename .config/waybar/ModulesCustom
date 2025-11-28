@@ -10,6 +10,15 @@
 	"tooltip": true,
 },
 
+"custom/finance": {
+  "format": "", 
+  "return-type": "json",
+  "exec": "$HOME/.cargo/bin/waybar-finance",
+  "interval": 60,
+  "on-click": "ghostty --title=waybar-finance -e $HOME/.cargo/bin/waybar-finance --tui", 
+  "tooltip": true
+},
+
 "custom/file_manager": {
 	"format": "",
 	"on-click": "thunar &",
