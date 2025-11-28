@@ -30,26 +30,33 @@ All the helper scripts in this repo have been rewritten in Rust for maximum perf
 <p align="center">
   <img src="screenshots/waybar-weather.png" width="32%" alt="Waybar weather module"/>
   </p>
+
 - **`sway-workspace`**: A simple helper that reliably gets the current workspace name for the Waybar module in Sway.
 - **`update-check`**: The update icon in Waybar. It safely checks for new `pacman` and `yay` updates and shows the count. It's network-aware and displays a "stale" count if you're offline.
 - **`cloudflare-toggle`**:
   - **`cf-status`**: The "CF" icon in Waybar that shows if you are using Cloudflare DNS over HTTPS.
   - **`cf-toggle`**: The `on-click` script that securely toggles Cloudflare DNS over HTTPS on or off using `pkexec`.
+
 <p align="center">
   <img src="screenshots/cf-toggle.png" width="32%" alt="Cloudflare toggle module"/>
   </p>
+
 - **`wallpaper-manager`**: A 3-part system that manages all your wallpapers.
   - **`wp-daemon`**: A silent, background daemon that watches your wallpaper folder for changes and auto-generates thumbnails.
   - **`wp-select`**: The Rofi-based pop-up menu (`Mod+W`) that lets you see your wallpaper thumbnails and choose a new one.
   - **`wp-apply`**: The back-end tool that actually sets the wallpaper, using the correct tool for your session (`swaybg` or `swww`).
+
 <p align="center">
   <img src="screenshots/wallpaper-manager.png" width="32%" alt="Wallpaper rofi app"/>
   </p>
+
 - **`kb-launcher`**: The keybind cheat sheet (`Mod+Shift+P`). It's a pop-up menu that reads your `.txt` files to show you the keybinds for Niri, Sway, Hyprland, or Neovim.
+
 <p align="center">
   <img src="screenshots/keyhints.png" width="32%" alt="keyhint sheet"/>
   <img src="screenshots/keyhints-selector.png" width="32%" alt="Keyhint session selector (rofi)" />
   </p>
+
 - **`updater`**: The `on-click` script for the `update-check` module. It simply launches your terminal (`ghostty`) to run the actual system update.
     > ⚠️**WARNING!!!! My updater runs fwupdmgr as sudo with a -y flag.**
     > **Do not update with my updater** unless you are prepared to reboot or get sent into a bios update.
@@ -87,7 +94,9 @@ cargo install --path .
 <p align="center">
   <img src="screenshots/rofi-radio.png" width="32%" alt="rofi radio app"/>
   </p>
+
 - **`waybar-finance`**: A lightweight TUI market watch list application with charts, and security details. Designed to be run in a terminal multiplexer like tmux or ghostty. This will request that you create and enter a Finnhub.io API key on first run. The app will display quoting of your watchlist items as a tooltip on hover over its icon in Waybar.
+
 <p align="center">
   <img src="screenshots/waybar-finance-tooltip.png" width="32%" alt="waybar finance tooltip"/>
   <img src="screenshots/waybar-finance-tui.png" width="65%" alt="finance TUI" />
