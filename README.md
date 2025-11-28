@@ -16,7 +16,7 @@ This is my obsessive setup for a minimal, multi-compositor Arch Linux environmen
 
 **Credit to JaKooLit for the original inspiration. I have since heavily modified and optimized it for my needs. Many theme options and examples are available on <https://github.com/JaKooLit/Hyprland-Dots>**
 
-The whole point is efficiency and performance. This setup idles at 4.8W on my ThinkPad X1 Extreme (i7-10850H, 64GB RAM, GTX 1650 Ti, 4k display).
+The whole point is efficiency and performance. This setup idles at 4.8W on my ThinkPad X1 Extreme (i7-10850H, 64GB RAM, GTX 1650 Ti, 4k display). I worked diligently on NVIDIA Optimus / Hybrid Graphics Fixes, it was a nightmare. Hopefully my pain can help others circumnavigate having to figure it all out from scratch.
 
 This is a personal repo, not a beginner's guide. It assumes you know what you're doing.
 
@@ -100,7 +100,7 @@ cargo install --path .
 
 *You'll see all my helper scripts are written in Rust. I'm not a "Rust-acean," but I am a pragmatist.*
 
-*Why not Python? Because Python is the absolute worst. It's a slow, dependency-hell nightmare. I don't trust its supply chain, and honestly, I just don't vibe with it. I'll take C-style syntax any day.*
+*Why not Python? I chose Rust over Python to avoid dependency hell and runtime errors. I wanted compiled, single-binary tools that sip battery (4.8W idle!) and don't break when I update system Python packages.*
 
 *Why not shell scripts? My old scripts were a disaster zone of pgrep, jq, sed, awk, and cat all piped together. They were fragile, slow, and worked like crap. Check out the [`sysScripts/`](sysScripts/) directory to see the Rust scripts that replaced them*
 
@@ -114,7 +114,7 @@ cargo install --path .
 
 ## 1. Core Dependencies (pacman)
 
-This won't be a one-click install. You need to build the base.
+This won't be a one-click install. You need to build the base. (Installer script possibly coming soon)
 Bash
 
 ### The compositors and base DE (for services)
