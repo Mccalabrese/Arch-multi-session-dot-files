@@ -38,7 +38,7 @@ All the helper scripts in this repo have been rewritten in Rust for maximum perf
   - **`cf-toggle`**: The `on-click` script that securely toggles Cloudflare DNS over HTTPS on or off using `pkexec`.
 
 <p align="center">
-  <img src="screenshots/cf-toggle.png" width="70%" alt="Cloudflare toggle module"/>
+  <img src="screenshots/cf-toggle.png" width="60%" alt="Cloudflare toggle module"/>
   </p>
 
 - **`wallpaper-manager`**: A 3-part system that manages all your wallpapers.
@@ -92,7 +92,7 @@ cargo install --path .
   </p>
 - **`radio-menu`**: A rofi based, extremely lightweight and low power consumption internet radio streaming tool that caches favorite stations for quick selection.
 <p align="center">
-  <img src="screenshots/rofi-radio.png" width="70%" alt="rofi radio app"/>
+  <img src="screenshots/rofi-radio.png" width="85%" alt="rofi radio app"/>
   </p>
 
 - **`waybar-finance`**: A lightweight TUI market watch list application with charts, and security details. Designed to be run in a terminal multiplexer like tmux or ghostty. This will request that you create and enter a Finnhub.io API key on first run. The app will display quoting of your watchlist items as a tooltip on hover over its icon in Waybar.
