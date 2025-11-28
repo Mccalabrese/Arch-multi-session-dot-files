@@ -28,7 +28,7 @@ All the helper scripts in this repo have been rewritten in Rust for maximum perf
 - **`waybar-weather`**: The weather module in Waybar. It's a custom-built app that securely gets your API key from the central config, finds your location, and fetches the weather.
 
 <p align="center">
-  <img src="screenshots/waybar-weather.png" width="32%" alt="Waybar weather module"/>
+  <img src="screenshots/waybar-weather.png" width="28%" alt="Waybar weather module"/>
   </p>
 
 - **`sway-workspace`**: A simple helper that reliably gets the current workspace name for the Waybar module in Sway.
@@ -38,7 +38,7 @@ All the helper scripts in this repo have been rewritten in Rust for maximum perf
   - **`cf-toggle`**: The `on-click` script that securely toggles Cloudflare DNS over HTTPS on or off using `pkexec`.
 
 <p align="center">
-  <img src="screenshots/cf-toggle.png" width="32%" alt="Cloudflare toggle module"/>
+  <img src="screenshots/cf-toggle.png" width="70%" alt="Cloudflare toggle module"/>
   </p>
 
 - **`wallpaper-manager`**: A 3-part system that manages all your wallpapers.
@@ -47,14 +47,14 @@ All the helper scripts in this repo have been rewritten in Rust for maximum perf
   - **`wp-apply`**: The back-end tool that actually sets the wallpaper, using the correct tool for your session (`swaybg` or `swww`).
 
 <p align="center">
-  <img src="screenshots/wallpaper-manager.png" width="32%" alt="Wallpaper rofi app"/>
+  <img src="screenshots/wallpaper-manager.png" width="70%" alt="Wallpaper rofi app"/>
   </p>
 
 - **`kb-launcher`**: The keybind cheat sheet (`Mod+Shift+P`). It's a pop-up menu that reads your `.txt` files to show you the keybinds for Niri, Sway, Hyprland, or Neovim.
 
 <p align="center">
   <img src="screenshots/keyhints.png" width="32%" alt="keyhint sheet"/>
-  <img src="screenshots/keyhints-selector.png" width="32%" alt="Keyhint session selector (rofi)" />
+  <img src="screenshots/keyhints-selector.png" width="60%" alt="Keyhint session selector (rofi)" />
   </p>
 
 - **`updater`**: The `on-click` script for the `update-check` module. It simply launches your terminal (`ghostty`) to run the actual system update.
@@ -75,7 +75,7 @@ cargo install --path .
 - **`power-menu`**: The graphical power menu (`Ctrl+Alt+P`). It's a compositor-aware launcher for `wlogout` that automatically calculates the correct screen position and scaling for Niri, Hyprland, and Sway.
 
 <p align="center">
-  <img src="screenshots/power-menu.png" width="32%" alt="Power Menu formatting"/>
+  <img src="screenshots/power-menu.png" width="60%" alt="Power Menu formatting"/>
   </p>
 
 - **`rfkill-manager`**:
@@ -84,15 +84,15 @@ cargo install --path .
 - **`clip-manager`**: The clipboard history manager (`Mod+Alt+V`). It uses `cliphist` as a backend and pipes your selection to Rofi, allowing you to copy, delete, or wipe your clipboard history.
 
 <p align="center">
-  <img src="screenshots/clipboard.png" width="32%" alt="clipboard manager"/>
+  <img src="screenshots/clipboard.png" width="58%" alt="clipboard manager"/>
   </p>
 - **`emoji-picker`**: The emoji selector (`Mod+Alt+E`). It uses a built-in Rust emoji database to give you a fast, searchable Rofi menu for copying any emoji.
 <p align="center">
-  <img src="screenshots/emoji.png" width="32%" alt="Emoji rofi app"/>
+  <img src="screenshots/emoji.png" width="42%" alt="Emoji rofi app"/>
   </p>
 - **`radio-menu`**: A rofi based, extremely lightweight and low power consumption internet radio streaming tool that caches favorite stations for quick selection.
 <p align="center">
-  <img src="screenshots/rofi-radio.png" width="32%" alt="rofi radio app"/>
+  <img src="screenshots/rofi-radio.png" width="70%" alt="rofi radio app"/>
   </p>
 
 - **`waybar-finance`**: A lightweight TUI market watch list application with charts, and security details. Designed to be run in a terminal multiplexer like tmux or ghostty. This will request that you create and enter a Finnhub.io API key on first run. The app will display quoting of your watchlist items as a tooltip on hover over its icon in Waybar.
@@ -105,11 +105,11 @@ cargo install --path .
 ## Screenshots
 
 <p align="center">
-  <img src="screenshots/sway.png" width="32%" alt="Sway iGPU-only Idle"/>
-  <img src="screenshots/gnome.png" width="32%" alt="Gnome Desktop"/>
+  <img src="screenshots/sway.png" width="48%" alt="Sway iGPU-only Idle"/>
+  <img src="screenshots/gnome.png" width="48%" alt="Gnome Desktop"/>
   </p>
 <p align="center">
-  <img src="screenshots/niri.png" width="32%" alt="Niri Overview"/>
+  <img src="screenshots/niri.png" width="90%" alt="Niri Overview"/>
   <img src="screenshots/hyprland.png" width="90%" alt="Hyprland Desktop"/>
 </p>
 
