@@ -180,6 +180,11 @@ window-rule {
     opacity 0.88
 }
 
+window-rule {
+    match app-id="org.gnome.FileRoller"
+    open-floating true
+}
+
 cursor {
     xcursor-theme "Adwaita"
     xcursor-size 24

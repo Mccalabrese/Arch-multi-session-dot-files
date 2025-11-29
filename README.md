@@ -1,4 +1,8 @@
-# Arch Linux Dotfiles: Niri, Hyprland & Sway (Rust-Powered)
+<p align="center">
+  <img src="logo.svg" width="200" height="200" alt="Rust Wayland Power Logo">
+</p>
+
+<h1 align="center">Arch Linux Dotfiles: Niri, Hyprland & Sway</h1>
 
 <p align="left">
   <a href="./LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg" alt="MIT License"></a>
@@ -11,6 +15,7 @@
   <a href="#my-arch-dotfiles"><img src="https://img.shields.io/badge/Compositors-Niri%20%7C%20Hyprland%20%7C%20Sway-6A5ACD" alt="Compositors: Niri | Hyprland | Sway"></a>
   <a href="https://www.shellcheck.net/"><img src="https://img.shields.io/badge/shellcheck-recommended-blue" alt="ShellCheck recommended"></a>
 </p>
+[![Donate](https://img.shields.io/badge/Donate-Crypto-yellow.svg?style=for-the-badge&logo=bitcoin&logoColor=white)](#support-the-project)
 
 This is my obsessive setup for a minimal, multi-compositor Arch Linux environment. I run niri mostly but sometimes hyprland (docked on external monitor), and a custom sway session (iGPU-only, hyper optimized for battery). I also have gnome. Gnome is there when a full desktop is needed. Some things, such as annotating on students screens in zoom, just will not work on anything but a full desktop. My other configs do assume you have gnome and all its dependencies.
 
@@ -473,3 +478,10 @@ sudo grub-mkconfig -o /boot/grub/grub.cfg
 ```
 
 After a reboot, your dGPU will now correctly power off (Video Memory: Off) after 10-15 seconds of idle.
+
+## Support the Project
+
+If these dotfiles saved you time or improved your battery life, consider buying me a coffee (or a textbook). I'm a computer engineering student, and every bit helps!
+
+- **BTC:** `bc1qvanmtuwn3jd5wurlj3wc9j7ddcwcwwzhjj6ndx`
+- **ETH:** `0x1dC04e98A9762fdb86F09437813Ce73D9112dF96`
