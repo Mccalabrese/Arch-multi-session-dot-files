@@ -18,13 +18,41 @@
 
 [![Donate](https://img.shields.io/badge/Donate-Crypto-yellow.svg?style=for-the-badge&logo=bitcoin&logoColor=white)](#support-the-project)
 
-This is my obsessive setup for a minimal, multi-compositor Arch Linux environment. I run niri mostly but sometimes hyprland (docked on external monitor), and a custom sway session (iGPU-only, hyper optimized for battery). I also have gnome. Gnome is there when a full desktop is needed. Some things, such as annotating on students screens in zoom, just will not work on anything but a full desktop. My other configs do assume you have gnome and all its dependencies.
+This is my obsessive setup for a minimal, multi-compositor Arch Linux environment. I run **Niri** primarily, **Hyprland** when docked, and a custom **Sway** session (iGPU-only) hyper-optimized for battery life. Gnome is also there when a full desktop is needed (like teaching and annotating on students screens in zoom).
+
+The whole point is efficiency and performance. This setup idles at **4.8W** on my ThinkPad X1 Extreme (i7-10850H, 64GB RAM, GTX 1650 Ti, 4k display). I worked diligently on NVIDIA Optimus / Hybrid Graphics Fixes to achieve this.
+
+---
+
+## 🚀 Installation
+
+### ⚠️ Beta Warning
+>
+> **The Rust Installer is currently in BETA.**
+> While I use this daily, it performs major system changes (package installation, config linking, systemd services).
+>
+> **If you encounter errors:** Please open an issue with your **Hardware Details** (GPU, CPU, Laptop Model) and the full error log.
+
+### Automatic Install (Recommended)
+
+This repo includes a `bootstrap.sh` script that handles dependency checking, git cloning, and launches the Rust-based installation wizard.
+
+```bash
+git clone [https://github.com/Mccalabrese/rust-wayland-power.git](https://github.com/Mccalabrese/rust-wayland-power.git)
+cd rust-wayland-power
+chmod +x bootstrap.sh
+./bootstrap.sh
+```
+
+### Manual Installation
+
+If you prefer to understand every change being made to your system, or if the installer fails, please consult the manual guide 👉 [docs/MANUAL_INSTALL.md](docs/MANUAL_INSTALL.md).
+
+## ⚡ Power Management (NVIDIA Optimus)
+
+Achieving sub-5W idle on a workstation requires specific BIOS, Kernel, and Udev Configurations 👉 [docs/POWER_MANAGEMENT.md](docs/POWER_MANAGEMENT.md).
 
 **Credit to JaKooLit for the original inspiration. I have since heavily modified and optimized it for my needs. Many theme options and examples are available on <https://github.com/JaKooLit/Hyprland-Dots>**
-
-The whole point is efficiency and performance. This setup idles at 4.8W on my ThinkPad X1 Extreme (i7-10850H, 64GB RAM, GTX 1650 Ti, 4k display). I worked diligently on NVIDIA Optimus / Hybrid Graphics Fixes, it was a nightmare. Hopefully my pain can help others circumnavigate having to figure it all out from scratch.
-
-This is a personal repo, not a beginner's guide. It assumes you know what you're doing.
 
 ## My Custom Rust Binaries
 
@@ -123,362 +151,15 @@ cargo install --path .
   <img src="screenshots/hyprland.png" width="90%" alt="Hyprland Desktop"/>
 </p>
 
-## Table of Contents
+### The Philosophy: Why Rust?
 
-<details>
-<summary><strong>Table of Contents</strong></summary>
+You'll see all my helper scripts are written in Rust. I'm not a "Rust-acean," but I am a pragmatist.
 
-- [Screenshots](#screenshots)
-- [The Philosophy: Why Rust?](#the-philosophy-why-rust)
-- [My Custom Rust Binaries](#my-custom-rust-binaries)
-- [Installation Guide](#installation-guide)
-  - [1. Core Dependencies (pacman)](#1-core-dependencies-pacman)
-  - [2. Manual System Config (The "Gotchas")](#2-manual-system-config-the-gotchas)
-  - [3. The Central Config (Your API Keys)](#3-the-central-config-your-api-keys)
-  - [4. Building the Rust Apps](#4-building-the-rust-apps)
-  - [5. Setting Up Your Configs & Secrets](#5-setting-up-your-configs--secrets)
-  - [6. Final Startup](#6-final-startup)
-- [Power Management Issues on my Hardware](#power-management-issues-on-my-hardware)
-  - [dGPU Power Management (NVIDIA Hybrid Laptops)](#dgpu-power-management-nvidia-hybrid-laptops)
-    - [1. Switch to greetd](#1-switch-to-greetd)
-    - [2. BIOS Setup](#2-bios-setup)
-    - [3. Set Kernel Module Parameters (The "Golden Config")](#3-set-kernel-module-parameters-the-golden-config)
-    - [4. Set udev Rule](#4-set-udev-rule)
-    - [5. Rebuild Everything](#5-rebuild-everything)
+Why not Python? I chose Rust to avoid dependency hell and runtime errors. I wanted compiled, single-binary tools that sip battery and don't break when I update system Python packages.
 
-</details>
+Why not shell scripts? My old scripts were a disaster zone of pgrep, jq, sed, awk, and cat all piped together. They were fragile, slow, and hard to maintain.
 
-## The Philosophy: Why Rust?
-
-*You'll see all my helper scripts are written in Rust. I'm not a "Rust-acean," but I am a pragmatist.*
-
-*Why not Python? I chose Rust over Python to avoid dependency hell and runtime errors. I wanted compiled, single-binary tools that sip battery (4.8W idle!) and don't break when I update system Python packages.*
-
-*Why not shell scripts? My old scripts were a disaster zone of pgrep, jq, sed, awk, and cat all piped together. They were fragile, slow, and worked like crap. Check out the [`sysScripts/`](sysScripts/) directory to see the Rust scripts that replaced them*
-
-*But why not Zig? I love Zig. It's the future. But the sad reality is that its API changes so fast, I can't even learn the language before a pacman -Syu breaks everything I've written.*
-
-*So, Rust. It gives me the C-like syntax and performance I want, with a stable ecosystem (cargo) that actually works. It's the best tool for the job right now. If the senior kernel devs hate rust, I stand with them, I make no comment or express no opinion on what should or should not be in the kernel.*
-
-*Why ghostty? It is the best.*
-
-# Installation Guide
-
-## 1. Core Dependencies (pacman)
-
-This won't be a one-click install. You need to build the base. (Installer script possibly coming soon)
-Bash
-
-### The compositors and base DE (for services)
-
-```bash
-sudo pacman -S sway hyprland niri gnome
-```
-
-### Core UI tools
-
-```bash
-sudo pacman -S waybar hyprlock swayidle wofi rofi wlogout hypridle tlp
-```
-
-### Key system services & utilities
-
-```bash
-sudo pacman -S polkit-gnome nm-applet udiskie geoclue greetd greetd-tuigreet
-sudo pacman -S pulseaudio # or pipewire-pulse, your call
-```
-
-### Our custom scripts will need these
-
-```bash
-sudo pacman -S cloudflared pacman-contrib fakeroot rfkill cliphist wl-clipboard
-```
-
-### User apps I use
-
-```bash
-sudo pacman -S ghostty thunar
-```
-
-### Build toolchain for our Rust apps
-
-```bash
-sudo pacman -S rustup openssl pkg-config libc
-```
-
-## 2. Manual System Config (The "Gotchas")
-
-You must do these steps as sudo. My scripts depend on this.
-
-### geoclue (for Weather)
-
-The default Mozilla backend is dead. We use Google.
-
-Get a Google Geolocation API key.
-
-Edit /etc/geoclue/geoclue.conf.
-
-Find the [wifi-scan] section and add your key:
-Ini, TOML:
-
-```ini
-[wifi-scan]
-url=https://www.googleapis.com/geolocation/v1/geolocate?key=YOUR_GOOGLE_KEY_HERE
-```
-
-Restart the service:
-
-```bash
-sudo systemctl restart geoclue.service
-```
-
-### systemd-resolved (for DNS)
-
-My cloudflare-toggle script manually writes to /etc/resolv.conf. This only works if systemd-resolved isn't fighting you.
-
-```bash
-sudo systemctl disable --now systemd-resolved
-sudo rm /etc/resolv.conf
-sudo touch /etc/resolv.conf
-echo "nameserver 1.1.1.1" | sudo tee /etc/resolv.conf
-```
-
-### zsh and $PATH
-
-My scripts (and niri/sway/hyprland) will fail if they can't find the Rust binaries. You must add cargo to your path in a way that non-interactive sessions can read.
-
-Create this file: ~/.config/environment.d/99-custom-path.conf
-
-Put this one line in it:
-
-```bash
-PATH=$HOME/.cargo/bin:$HOME/.pub-cache/bin:$PATH
-```
-
-Log out and log back in. ~/.zshrc is the wrong place for this.
-
-### Clean Session Switching
-
-If you find that tray icons ('nm-applet', 'waybar') are duplicating when you switch sessions, it's because your old session's apps aren't being killed.
-
-1. Edit your 'logind.conf':
-
-```bash
-sudo nano /etc/systemd/logind.conf
-```
-
-2. Find the line '#KillUserProcesses=no' and change it to 'yes':
-ini:
-
-```ini
-killUserProcesses=yes
-```
-
-3. Restart the service to apply:
-
-```bash
-sudo systemctl restart systemd-logind.service
-```
-
-## 3. The Central Config (Your API Keys)
-
-All of our custom Rust scripts are controlled by one file. This is where you put your API keys and personal paths.
-
-Copy the template:
-Bash
-
-```bash
-mkdir -p ~/.config/rust-dotfiles
-cp ~/.config/rust-dotfiles/config.toml.template ~/.config/rust-dotfiles/config.toml
-```
-
-Edit the file:
-Bash
-
-```bash
-nano ~/.config/rust-dotfiles/config.toml
-```
-
-Fill in your secrets. This one file controls your weather API key, wallpaper directory, terminal choice, and more. The .gitignore file is already set up to protect this file from being committed.
-
-## 4. Building the Rust Apps
-
-This repo contains the source code for all my custom scripts in the ~/sysScripts directory. You need to install them.
-
-### First copy sysScripts into your home dir
-
-```bash
-cp -r sysScripts ~/sysScripts
-```
-
-### init rustup
-
-```bash
-rustup-init
-```
-
-### Add cargo to your current shell (you'll log out later)
-
-```bash
-source "$HOME/.cargo/env"
-```
-
-### Now, install everything
-
-```bash
-cd sysScripts/waybar-switcher && cargo install --path .
-cd sysScripts/waybar-weather && cargo install --path .
-cd sysScripts/sway-workspace && cargo install --path .
-cd sysScripts/update-check && cargo install --path .
-cd sysScripts/cloudflare-toggle && cargo install --path .
-cd sysScripts/wallpaper-manager && cargo install --path .
-cd sysScripts/kb-launcher && cargo install --path .
-cd sysScripts/updater && cargo install --path .
-cd sysScripts/power-menu && cargo install --path .
-cd sysScripts/rfkill-manager && cargo install --path .
-cd sysScripts/clip-manager && cargo install --path .
-cd sysScripts/emoji-picker && cargo install --path .
-cd sysScripts/radio-menu && cargo install --path .
-cd sysScripts/waybar-finance && cargo install --path .
-```
-
-## 5. Setting Up Your Configs & Secrets
-
-I don't commit my API keys. You shouldn't either.
-
-Symlink the "safe" configs:
-Bash
-
-```bash
-ln -s ~/rust-wayland-power/.tmux.conf ~/.tmux.conf
-ln -s ~/rust-wayland-power/.profile ~/.profile
-ln -s ~/rust-wayland-power/tlp.conf /etc/tlp.conf
-sudo systemctl enable tlp.service
-ln -s ~/rust-wayland-power/.config/hypr ~/.config/hypr
-ln -s ~/rust-wayland-power/.config/sway ~/.config/sway
-ln -s ~/rust-wayland-power/.config/niri ~/.config/niri
-ln -s ~/rust-wayland-power/.config/rofi ~/.config/rofi
-ln -s ~/rust-wayland-power/.config/swaync ~/.config/swaync
-ln -s ~/rust-wayland-power/.config/environment.d ~/.config/environment.d
-ln -s ~/rust-wayland-power/.config/ghostty ~/.config/ghostty
-ln -s ~/rust-wayland-power/.config/gtk-3.0 ~/.config/gtk-3.0
-ln -s ~/rust-wayland-power/.config/gtk-4.0 ~/.config/gtk-4.0
-ln -s ~/rust-wayland-power/.config/fastfetch ~/.config/fastfetch
-ln -s ~/rust-wayland-power/.config/wlogout ~/.config/wlogout
-ln -s ~/rust-wayland-power/.config/waybar ~/.config/waybar
-```
-
-Our Rust scripts handle all secrets. You just need to copy the Waybar config templates.
-
-```bash
-cp ~/rust-wayland-power/.config/waybar/hyprConfig.jsonc.template ~/.config/waybar/hyprConfig.jsonc
-cp ~/rust-wayland-power/.config/waybar/swayConfig.jsonc.template ~/.config/waybar/swayConfig.jsonc
-cp ~/rust-wayland-power/.config/waybar/niriConfig.jsonc.template ~/.config/waybar/niriConfig.jsonc
-```
-
-## 6. Final Startup
-
-### Neovim Setup
-
-This config uses LazyVim. The configuration is minimal. To use it, you must follow their installation guide first. My personal tweaks can be found in ~/.config/nvim/lua/plugins/.
-
-### Pro-Tip: Clean Up Greetd Session List
-
-If `greetd-tuigreet` shows you a huge list of sessions you don't use (like "GNOME Classic", "GNOME on Xorg", etc.), you can tell `pacman` to *never install* those `.desktop` files.
-
-1. Edit your `pacman.conf`:
-    bash
-
-```bash
-sudo nano /etc/pacman.conf
-```
-
-2. Find the `NoExtract` line (it will be commented out) and add the paths to the session files you want to block.
-
-**Example:**
-    ini
-
-```ini
-# Pacman won't extract specified files
-#NoExtract =
-NoExtract = usr/share/wayland-sessions/gnome-classic.desktop usr/share/xsessions/gnome-classic.desktop    usr/share/xsessions/gnome-xorg.desktop
-```
-
-3. After saving, run a full system update. `pacman` will see these files are no longer "managed" and will ask you to remove them, cleaning up your login manager.
-
-# Power Management Issues on my Hardware
-
-## dGPU Power Management (NVIDIA Hybrid Laptops)
-
-This is the most critical fix for achieving low power (4-5W) idle on NVIDIA hybrid laptops (like the ThinkPad X1 Extreme).
-
-**The Problem:** Display managers like `gdm` or `sddm` probe the NVIDIA dGPU at boot, placing a VRAM lock. This "Video Memory: Active" state prevents the dGPU from entering its `D3cold` (RTD3) suspend state, wasting 3-5W of power at all times.
-
-**The Solution:** We must use a login manager that does *not* probe the dGPU at boot (`greetd`) and set the correct NVIDIA kernel module parameters.
-
-### 1. Switch to `greetd`
-
-This is the most important step. `greetd` will not wake the dGPU.
-    bash
-
-```bash
-sudo systemctl disable --now gdm # Or sddm
-sudo systemctl enable --now greetd.service
-```
-
-Then, edit /etc/greetd/config.toml to find your sessions (this is in the pacman dependencies):
-Ini, TOML
-
-```toml
-[default_session]
-command = "tuigreet --time --remember --sessions /usr/share/wayland-sessions:/usr/share/xsessions"
-```
-
-### 2. BIOS Setup
-
-    Set Config > Power > Sleep State to Windows (or S0ix).
-
-### 3. Set Kernel Module Parameters (The "Golden Config")
-
-Create /etc/modprobe.d/nvidia.conf:
-
-```conf
-# Disable GSP firmware (buggy on some Turing cards)
-options nvidia NVreg_EnableGpuFirmware=0
-# Enable "fine-grained" (0x02) runtime D3
-options nvidia NVreg_DynamicPowerManagement=0x02
-# Enable S0ix suspend support
-options nvidia NVreg_EnableS0ixPowerManagement=1
-```
-
-Create /etc/modprobe.d/99-nvidia-uvm-blacklist.conf to prevent the nvidia_uvm (CUDA) module from loading at boot and holding the VRAM lock:
-
-```conf
-blacklist nvidia_uvm
-```
-
-**(The nvidia_uvm module will still load on-demand when you launch a CUDA app).**
-
-### 4. Set udev Rule
-
-Create /etc/udev/rules.d/90-nvidia-pm.rules to enable runtime power management:
-
-```conf
-SUBSYSTEM=="pci", ATTR{vendor}=="0x10de", ATTR{power/control}="auto"
-```
-
-### 5. Rebuild Everything
-
-Ensure nvidia_drm.modeset=1 is in your /etc/default/grub GRUB_CMDLINE_LINUX_DEFAULT.
-
-Run:
-
-```bash
-sudo mkinitcpio -P
-sudo grub-mkconfig -o /boot/grub/grub.cfg
-```
-
-After a reboot, your dGPU will now correctly power off (Video Memory: Off) after 10-15 seconds of idle.
+**I like Zig, I like C, I make zero claim at all about whether Rust should or should not be in the kernel.**
 
 ## Support the Project
 
