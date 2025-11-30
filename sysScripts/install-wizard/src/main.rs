@@ -250,7 +250,12 @@ fn install_pacman_packages(packages: &[&str]) {
             eprintln!("❌ pacman not found or failed to execute.");
             std::process::exit(1);
         });
-    if !status.success() { eprintln!("{}", "⚠️  Pacman Warning.".yellow()); }
+
+    // UPDATE: Make failure fatal!
+    if !status.success() { 
+        eprintln!("{}", "❌ Critical Error: Pacman failed to install packages.".red());
+        std::process::exit(1); 
+    }
 }
 /// Bootstraps 'yay' from the AUR git repo if not present.
 /// This allows the script to run on a truly clean Arch install.
