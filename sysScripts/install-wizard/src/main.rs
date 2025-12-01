@@ -830,6 +830,10 @@ fn link_dotfiles_and_copy_resources() {
     } else {
         println!("   ⚠️  'wallpapers' directory not found in repo root.");
     }
+    println!("   🏠 Updating User Directories (XDG)...");
+    // This regenerates ~/.config/user-dirs.dirs and ~/.config/gtk-3.0/bookmarks
+    // ensuring they point to the *current* user's home, not Michael's.
+    let _ = Command::new("xdg-user-dirs-update").status();
 }
 ///Helper to create symlinks, backing up existing files if needed.
 fn create_symlink(src: &Path, dest: &Path) {
