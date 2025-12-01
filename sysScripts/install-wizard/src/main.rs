@@ -579,23 +579,35 @@ fn setup_secrets_and_geoclue() {
     // Simple validation: alphanumeric + underscores/hyphens only
     let is_valid_key = |k: &str| k.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-');
     
+    // --- GEOCLUE CONFIGURATION ---
     if !google_geo_api.is_empty() {
-        println!("   🌍 Configuring /etc/geoclue/geoclue.conf...");
-        
-        // Construct the content string
-        let geoclue_append = format!(
-            "\n[wifi-scan]\nurl=https://www.googleapis.com/geolocation/v1/geolocate?key={}\n", 
-            google_geo_api
-        );
+        println!("   🌍 Configuring Geoclue...");
+        let gc_path = "/etc/geoclue/geoclue.conf";
 
-        // UPDATE: Use the helper function instead of raw Command/bash/cat
-        // This is cleaner and reuses your existing security logic
-        match append_to_root_file("/etc/geoclue/geoclue.conf", &geoclue_append) {
-             Ok(_) => {
+        // 1. Ensure the wifi source is enabled (uncomment 'enable=true')
+        // We use a loose match to catch ';enable=true' or '#enable=true'
+        let _ = Command::new("sudo").args(["sed", "-i", "s/^.*enable=true/enable=true/", gc_path]).status();
+
+        // 2. Inject the Key
+        // We look for the placeholder URL provided by the package and replace it.
+        // The default line usually looks like:
+        // #url=https://www.googleapis.com/geolocation/v1/geolocate?key=YOUR_KEY
+        
+        // We construct a regex-like sed command to find the googleapis line (commented or not) 
+        // and replace the WHOLE line with our active key.
+        let new_url = format!("url=https://www.googleapis.com/geolocation/v1/geolocate?key={}", google_geo_api);
+        
+        // This sed command finds any line containing "googleapis.com" and replaces the entire line.
+        let status = Command::new("sudo")
+            .args(["sed", "-i", &format!("s|^.*googleapis.com.*|{}|", new_url), gc_path])
+            .status();
+
+        match status {
+             Ok(s) if s.success() => {
                  let _ = Command::new("sudo").args(["systemctl", "restart", "geoclue.service"]).output();
                  println!("   ✅ Geoclue Configured");
              },
-             Err(e) => eprintln!("   ❌ Failed to configure Geoclue: {}", e),
+             _ => eprintln!("   ❌ Failed to patch geoclue config."),
         }
     } else {
         println!("   ⚠️  No Google API Key provided. Location services may fail.");
