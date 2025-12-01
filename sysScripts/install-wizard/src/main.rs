@@ -356,9 +356,12 @@ user = "greeter"
     // SECURE FIX: Write to local dir (we own it) instead of /tmp (race condition)
     let _ = fs::write("./greetd_config.toml", greetd_config);
     run_cmd("sudo", &["mv", "./greetd_config.toml", "/etc/greetd/config.toml"]);
-    run_cmd("sudo", &["systemctl", "enable", "greetd.service"]);
-    run_cmd("sudo", &["systemctl", "disable", "gdm", "sddm", "lightdm"]);
-    
+    // 1. Disable competitors FIRST to free up the symlink
+    // We use status() and ignore errors because these might not be installed
+    let _ = Command::new("sudo").args(["systemctl", "disable", "gdm", "sddm", "lightdm"]).status();
+
+    // 2. Enable Greetd with --force to overwrite /etc/systemd/system/display-manager.service
+    run_cmd("sudo", &["systemctl", "enable", "--force", "greetd.service"]);
     println!("   🔧 Setting Shell to Zsh...");
     let user = std::env::var("USER").unwrap_or_else(|_| {
         eprintln!("⚠️  Could not detect $USER, defaulting to root");
