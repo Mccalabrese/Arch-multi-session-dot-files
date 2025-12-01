@@ -43,7 +43,35 @@ This repo includes a `bootstrap.sh` script that handles dependency checking, git
 **finnhub.io/register**
 **console.cloud.google.com/apis/library/geocoding-backend.googleapis.com**
 
-**Google will require you to have an account with billing information, however the usage of the weather module is orders of magnitude below the limit where they will ever charge you. I am currently looking into open source alternatives, but for now google works the best and is free, but does require billing info.**
+**The weather module relies on Geoclue, which needs the Google Maps Geolocation API to find your laptop (since most laptops don't have GPS).**
+
+**You must enable Billing for this API to work. Don't panic: Google gives $200/month free credit, which is millions of requests. You will never pay a cent for personal use, but you must have a card on file.**
+
+    Go to Google Cloud Console: console.cloud.google.com
+
+    Create a Project: Name it "Arch-Weather" or similar.
+
+    Enable the API:
+
+        Search for "Geolocation API" (Not Geocoding, specifically Geolocation).
+
+        Click Enable.
+
+    Create Credentials:
+
+        Go to APIs & Services > Credentials.
+
+        Click Create Credentials > API Key.
+
+        Recommended: Click "Restrict Key" and lock it to "Geolocation API" only for security.
+
+    Enable Billing:
+
+        Go to Billing in the sidebar.
+
+        Link a credit card. (Again, you won't be charged unless you make >100,000 requests/month).
+
+    Copy the Key: Paste this into the Installer when prompted.
 
 **If you do not have drivers for your graphics card yet (fresh arch install) the updater will install them and ask you to reboot, instructions are given in the installer window but allow the reboot then rerun the installer with the same curl command after your computer turns back on and it will continue where it left off.**
 
