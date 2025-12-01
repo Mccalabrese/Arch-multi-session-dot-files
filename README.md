@@ -72,7 +72,7 @@ The weather module uses Geoclue, which requires the **Google Maps Geolocation AP
 This one-liner downloads the bootstrap script, which installs Git/Rust, clones this repo, and launches the configuration wizard.
 
 ```bash
-cd ~ && curl -O [https://raw.githubusercontent.com/Mccalabrese/rust-wayland-power/main/bootstrap.sh](https://raw.githubusercontent.com/Mccalabrese/rust-wayland-power/main/bootstrap.sh) && chmod +x bootstrap.sh && ./bootstrap.sh
+cd ~ && curl -O https://raw.githubusercontent.com/Mccalabrese/rust-wayland-power/main/bootstrap.sh && chmod +x bootstrap.sh && ./bootstrap.sh
 ```
 
 *Note: If the installer detects missing GPU drivers (e.g., fresh Arch install), it will install them and ask you to reboot. Simply run this command again after rebooting to resume exactly where you left off.*
