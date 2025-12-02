@@ -214,6 +214,7 @@ fn main() {
     setup_secrets_and_geoclue();
 
     println!("\n{}", "✅ Installation Complete! Please Reboot.".green().bold());
+    print_logo();
 }
 
 // --- Helper functions ---
@@ -329,6 +330,30 @@ fn install_aur_packages() {
 /// 2. Configures `greetd` (tuigreet) as the display manager.
 /// 3. Sets `KillUserProcesses=yes` to prevent lingering sessions.
 fn configure_system() {
+    // --- 1. SANITIZE MKINITCPIO (Fix Archinstall 2025 Bug) ---
+    // This protects NVIDIA users from the 'o"' corruption crash.
+    println!("   🧹 Checking mkinitcpio.conf for corruption...");
+    let mkinit_path = "/etc/mkinitcpio.conf";
+    
+    // 1. Check if the file specifically ends with the garbage (ignoring whitespace)
+    // We read it first to be safe, rather than firing sed blindly.
+    if let Ok(content) = fs::read_to_string(mkinit_path) {
+        let trimmed = content.trim(); // Removes trailing \n
+        if trimmed.ends_with("o\"") || trimmed.ends_with("o”") {
+            println!("   ⚠️  Corruption detected at end of file. Cleaning up...");
+            
+            // 2. Safe Delete: Only delete the last line ($) if it matches the pattern
+            // usage: sed -i '${/^o"$/d}' filename
+            let _ = Command::new("sudo")
+                .args(["sed", "-i", "${/^o\"$/d}", mkinit_path])
+                .status();
+                
+            // Extra safety: Removing the smart-quote variation just in case
+            let _ = Command::new("sudo")
+                .args(["sed", "-i", "${/^o”$/d}", mkinit_path])
+                .status();
+        }
+    }
     run_cmd("sudo", &["systemctl", "enable", "geoclue.service"]);
     run_cmd("sudo", &["systemctl", "enable", "bluetooth.service"]);
     run_cmd("sudo", &["systemctl", "enable", "bolt.service"]);
