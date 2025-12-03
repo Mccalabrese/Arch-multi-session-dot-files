@@ -101,7 +101,6 @@ const AUR_PACKAGES: &[&str] = &[
 ];
 // ---------- Main Execution ------_-------
 fn main() {
-    print_logo();
     println!("{}", "🚀 Starting Rust Wayland Power Installation...".green().bold());
 
     // 1. Elevate Privileges
@@ -159,7 +158,7 @@ fn main() {
             if let Ok(mut file) = fs::File::create(&state_file) {
                 writeln!(file, "Drivers installed successfully.").unwrap();
             }
-
+            print_logo();
             println!("{}", "✅ Checkpoint saved. Please REBOOT and RUN THIS SCRIPT AGAIN to finish.".green().bold());
             println!("The script will automatically detect this step is done next time.");
             
@@ -212,9 +211,11 @@ fn main() {
     //Heres where API prompts will happen
     //~/.config/rust-dotfiles/config.toml keeps users keys out of repo.
     setup_secrets_and_geoclue();
-
-    println!("\n{}", "✅ Installation Complete! Please Reboot.".green().bold());
+    // 10. Finalize (Plugins & Themes)
+    finalize_setup();
     print_logo();
+    println!("\n{}", "✅ Installation Complete! Please Reboot.".green().bold());
+    
 }
 
 // --- Helper functions ---
@@ -440,6 +441,17 @@ user = "greeter"
         "root".to_string()
     });
     let _ = Command::new("sudo").args(["chsh", "-s", "/usr/bin/zsh", &user]).output();
+    println!("   ✨ Setting up Tmux Plugin Manager...");
+    let tpm_dir = dirs::home_dir().unwrap().join(".tmux/plugins/tpm");
+    
+    if !tpm_dir.exists() {
+        let _ = Command::new("git")
+            .args(["clone", "https://github.com/tmux-plugins/tpm", tpm_dir.to_str().unwrap()])
+            .status();
+        println!("   ✅ TPM installed. (Press Prefix + I inside Tmux to install plugins)");
+    } else {
+        println!("   ℹ️  TPM already exists.");
+    }
 }
 
 fn run_cmd(cmd: &str, args: &[&str]) {
@@ -900,6 +912,48 @@ fn create_symlink(src: &Path, dest: &Path) {
     if dest.is_symlink() { let _ = fs::remove_file(dest); }
     #[cfg(unix)]
     std::os::unix::fs::symlink(src, dest).unwrap_or_else(|_| eprintln!("Failed to link {:?}", dest));
+}
+/// Runs post-install hooks to set up themes and plugins.
+/// This ensures the user doesn't see "broken" visuals on first launch.
+fn finalize_setup() {
+    println!("\n{}", "✨ Finalizing Setup (Themes & Plugins)...".blue().bold());
+    let home = dirs::home_dir().unwrap();
+
+    // 1. Install Tmux Plugins (Fixes the Green Bar)
+    let tpm_script = home.join(".tmux/plugins/tpm/bin/install_plugins");
+    if tpm_script.exists() {
+        println!("   📦 Installing Tmux Plugins (Headless)...");
+        // We capture output to avoid spamming the user's terminal unless it fails
+        let status = Command::new(&tpm_script)
+            .stdout(Stdio::null())
+            .stderr(Stdio::null())
+            .status();
+            
+        match status {
+            Ok(s) if s.success() => println!("   ✅ Tmux Plugins Installed"),
+            _ => println!("   ⚠️  Tmux plugin install failed (You can press Prefix + I inside Tmux)"),
+        }
+    }
+
+    // 2. Install Neovim Plugins (Lazy.nvim)
+    // Only run if we actually installed the config (check if dest exists)
+    let nvim_config = home.join(".config/nvim/init.lua"); // Check for main config file
+    if nvim_config.exists() {
+        println!("   📦 Bootstrapping Neovim (Lazy.nvim)...");
+        // --headless: Don't open a UI
+        // "+Lazy! sync": Run the sync command
+        // "+qa": Quit All after finishing
+        let status = Command::new("nvim")
+            .args(["--headless", "+Lazy! sync", "+qa"])
+            .stdout(Stdio::null()) // Neovim is noisy, silence it
+            .stderr(Stdio::null())
+            .status();
+
+        match status {
+            Ok(s) if s.success() => println!("   ✅ Neovim Plugins Synced"),
+            _ => println!("   ⚠️  Neovim setup skipped (will run on first launch)"),
+        }
+    }
 }
 
 fn print_logo() {
