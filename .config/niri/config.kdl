@@ -318,7 +318,7 @@ binds {
     Control+Alt+P { spawn-sh "$HOME/.cargo/bin/power-menu"; }
     Mod+Alt+E { spawn-sh "$HOME/.cargo/bin/emoji-picker"; }
     Mod+Alt+R { spawn-sh "$HOME/.cargo/bin/radio-menu"; }
-    Mod+Alt+F { spawn "ghostty" "--title=waybar-finance" "-e" "/home/michael/.cargo/bin/waybar-finance" "--tui"; }
+    Mod+Alt+F { spawn "ghostty" "--title=waybar-finance" "-e" "$HOME/.cargo/bin/waybar-finance" "--tui"; }
     // Exit Niri
     Mod+Shift+E { quit; }
     Ctrl+Alt+Delete { quit; } // Alt is Mod1

@@ -482,7 +482,16 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
 
     } else {
         // If no details loaded yet, show loading in the middle column
-        frame.render_widget(Paragraph::new("🐧🐧🐧 Select a ticker to begin or press 'd' to delete or 'a' to add a ticker 🐧🐧🐧"), col_chunks[1]);
+        // FIX: Use 'details_area' (Full Width) instead of 'col_chunks[1]' (1/3 width)
+        // so the text has room to breathe.
+        let text = "🐧🐧🐧\n\nSelect a ticker to begin\n\nPress 'a' to add  |  Press 'd' to delete\n\n🐧🐧🐧";
+        
+        let placeholder = Paragraph::new(text)
+            .style(Style::default().fg(Color::DarkGray))
+            .alignment(ratatui::layout::Alignment::Center)
+            .wrap(ratatui::widgets::Wrap { trim: true }); // Prevents cutting off if terminal is tiny
+
+        frame.render_widget(placeholder, details_area);
     }
     if app.input_mode == InputMode::Editing {
         let area = centered_rect(60, 40, frame.area());
