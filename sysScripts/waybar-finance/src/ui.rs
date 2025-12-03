@@ -482,7 +482,7 @@ pub fn ui(frame: &mut ratatui::Frame, app: &mut App) {
 
     } else {
         // If no details loaded yet, show loading in the middle column
-        frame.render_widget(Paragraph::new("🐧🐧🐧"), col_chunks[1]);
+        frame.render_widget(Paragraph::new("🐧🐧🐧 Select a ticker to begin or press 'd' to delete or 'a' to add a ticker 🐧🐧🐧"), col_chunks[1]);
     }
     if app.input_mode == InputMode::Editing {
         let area = centered_rect(60, 40, frame.area());
