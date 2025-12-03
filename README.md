@@ -102,6 +102,17 @@ To Fix:
 
     Sway: Edit ~/.config/sway/config -> Find output * scale 2 -> Change to scale 1.
 
+## 🔄 Updates & Maintenance
+
+This system is designed to keep the core tooling fresh without overwriting your personal customizations.
+
+* **🦀 Rust Scripts & Daemons (Auto-Updating):**
+    The built-in system updater (triggered via the Waybar "Update" icon) acts as a rolling-release manager for my custom tools. It automatically checks this repository for changes to the `sysScripts` directory. If updates are found, it will pull the code and recompile the binaries (`waybar-finance`, `wp-daemon`, etc.) on the fly.
+
+* **⚙️ Dotfiles & Configs (Manual):**
+    Your configuration files (`.config/sway`, `.zshrc`, `waybar/config.jsonc`, etc.) are **yours**. The updater will **never** touch them, ensuring your personal tweaks are safe.
+  * *Need the latest config features?* If you want to sync with my latest rice or fixes, treat this GitHub repository as a reference manual and copy the specific lines you need into your local files.
+
 ## 📂 Documentation
 
 * **[Manual Installation Guide](docs/MANUAL_INSTALL.md):** Prefer to run commands yourself? Read this.
@@ -147,19 +158,6 @@ All the helper scripts in this repo have been rewritten in Rust for maximum perf
   </p>
 
 * **`updater`**: The `on-click` script for the `update-check` module. It simply launches your terminal (`ghostty`) to run the actual system update.
-    > ⚠️**WARNING!!!! My updater runs fwupdmgr as sudo with a -y flag.**
-    > **Do not update with my updater** unless you are prepared to reboot or get sent into a bios update.
-    > If you are not comfortable with this, find the "let bash_script = format!(..)" block of updater/src/main.rs (line 113) and change it to:
->
-```rust
-let bash_script = format!("{} \n exit_code=$? \n echo -e '\\n\\n🏁 Update process finished. This window will close in 5 seconds.' \n sleep 5 \n exit $exit_code", update_cmd_str);
-```
->
-* > Then rebuild:
-
-```bash
-cargo install --path .
-```
 
 * **`power-menu`**: The graphical power menu (`Ctrl+Alt+P`). It's a compositor-aware launcher for `wlogout` that automatically calculates the correct screen position and scaling for Niri, Hyprland, and Sway.
 

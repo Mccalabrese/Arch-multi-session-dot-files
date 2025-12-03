@@ -15,53 +15,26 @@ use notify_rust::{Notification, Urgency};
 use serde::Deserialize;
 
 const LOGO: &str = r#"
-                                                                                                    
-                                             ++++++++++                                             
-                                           ++++++++++++++                                           
-                                          ++++++++++++++++                                          
-                                         ++++++++++++++++++                                         
-                                        ++++++++++++++++++++                                        
-                                       +++++++++====+++++++++                                       
-                                       ++++++=:......:=++++++                                       
-                                      +++++=:..........:=+++++                                      
-                                      ++++=..............=++++                                      
-                                      +++=.=##=......=##-.=+++                                      
-                                     ++++:-%%-.-....-%%:.-:++++                                     
-                                     +++=.*%%. *....#%%..*.=+++                                     
-                                     +++-.#%%#*%....%%%###.-+++                                     
-                                     +++-.#%%%%#....#%%%%#.-+++                                     
-                                     +++-.+%%%%*....*%%%%+.-+++                                     
-                                      ++=.:#%%#:....:#%%#:.=++                                      
-                                      +++..:=+:......:+=:..+++                                      
-                                     ++++-................-++++                                     
-                                     +++++:..............:+++++                                     
-                                    +++++++:............:+++++++                                    
-                                   +++++**+:............:+**+++++                                   
-                                   ++++****+=::......::=+****++++                                   
-                                  +++++*********++++*********+++++                                  
-                                  +++++++******************+++++++                                  
-                                  ++++++:.-+***************:++++++                                  
-                                 +++++++....::--------::***-+++++++                                 
-                                 ++++++-................+**==++++++                                 
-                                 ++++++:................-***-++++++                                 
-                                 ++++++:.................***-++++++                                 
-                                 ++++++..................+**=++++++                                 
-                                 ++++++..................-***++++++                                 
-                                 ++++++...................***++++++                                 
-                                  +++++:..................=*++++++                                  
-                                  +++++-...................:-+++++                                  
-                                  +++++=....................=+++++                                  
-                                  ++++++:..................:+++++* 
-                                   +++++-..................-+++++                                   
-                                    +++++:................:+++++                                    
-                                    +++++=................++++++                                    
-                                     +++++=..............=+++++                                     
-                                      +++++=:..........:=+++++                                      
-                                       ++++++-........-++++++                                       
-                                        ++++++++=--=++++++++                                        
-                                          ++++++++++++++++                                          
-                                            ++++++++++++                                            
-                                               *++++* "#;
+"++++++++++
+     ++++++++++++++
+    ++++++++++++++++
+   ++++++++++++++++++
+  ++++++++++++++++++++
+ +++++++++====+++++++++
+ ++++++=:......:=++++++
+ +++++=:..........:=+++++
+ ++++=..............=++++
+ +++=.=##=......=##-.=+++
+++++:-%%-.-....-%%:.-:++++
++++=.*%%. *....#%%..*.=+++
++++-.#%%#*%....%%%###.-+++
++++-.#%%%%#....#%%%%#.-+++
++++-.+%%%%*....*%%%%+.-+++
+ ++=.:#%%#:....:#%%#:.=++
+ +++..:=+:......:+=:..+++
+++++-................-++++
++++++:..............:+++++
+"#;
 
 /// Expands shell-style paths like `~/` to absolute system paths.
 fn expand_path(path: &str) -> PathBuf {
@@ -179,33 +152,79 @@ fn main() -> Result<()> {
     let update_cmd_str = updater_conf.update_command.join(" ");
     
     let bash_script = format!(r#"
-        cat << "EOF"
+        cat << 'EOF'
 {}
 EOF
-        echo -e "\n🚀 Starting System Update...\n"
+        echo -e "\n🚀 Starting System Update..."
+        
+        # --- 1. SYSTEM UPDATE ---
         {}
         sys_exit=$?
 
-        fw_exit=0
-
+        # --- 2. FIRMWARE UPDATE ---
+        # Interactive check: Only prompts if updates exist.
         if [ $sys_exit -eq 0 ]; then
             echo -e "\n\n🔌 Checking for Firmware Updates..."
-
             if command -v fwupdmgr &> /dev/null; then
-                sudo fwupdmgr refresh
-                sudo fwupdmgr update -y
-                fw_exit=$?
+                sudo fwupdmgr refresh > /dev/null
+                if fwupdmgr get-updates 2>&1 | grep -q "No updates"; then
+                    echo "✔ Firmware is up to date."
+                else
+                    echo -e "\n⚠️  Firmware updates available!"
+                    echo "Starting update process..."
+                    sudo fwupdmgr update
+                fi
             else
                 echo "fwupdmgr not found, skipping."
             fi
         else
-            echo -e "\n⚠ System update failed, skipping firmware."
+            echo -e "\n⚠ System update failed, skipping firmware/scripts."
         fi
 
-        echo -e "\n\n🏁 Update process finished. CLosing in 5s..."
+        # --- 3. RUST TOOLS SELF-UPDATE ---
+        if [ $sys_exit -eq 0 ]; then
+            echo -e "\n\n🦀 Checking for Rust Script Updates..."
+            
+            if [ -d "$HOME/rust-wayland-power/.git" ]; then
+                cd ~/rust-wayland-power
+                
+                # Safety Check: Prevent overwriting local dev work
+                if ! git diff --quiet sysScripts || ! git diff --cached --quiet sysScripts; then
+                    echo -e "\n⚠️  Local changes detected in sysScripts!"
+                    echo "Skipping auto-update to prevent data loss."
+                else
+                    echo "Fetching remote..."
+                    git fetch origin main
+                    
+                    # Direct check: Did sysScripts change on the remote vs here?
+                    if ! git diff --quiet HEAD..origin/main -- sysScripts; then
+                        echo -e "\n✨ Updates detected in sysScripts! Syncing..."
+                        
+                        # Partial Checkout: Only update the scripts folder
+                        git checkout origin/main -- sysScripts
+                        
+                        echo "🔨 Recompiling Toolchain..."
+                        cd sysScripts
+                        for dir in */; do
+                            if [ -f "$dir/Cargo.toml" ]; then
+                                echo "   >> Compiling $dir..."
+                                (cd "$dir" && cargo install --path . --force --quiet)
+                            fi
+                        done
+                        echo -e "✅ Custom tools updated successfully."
+                    else
+                        echo "✔ Rust tools are up to date."
+                    fi
+                fi
+            else
+                echo "⚠ Repo not found or invalid git state. Skipping script update."
+            fi
+        fi
+
+        echo -e "\n\n🏁 Process finished. Closing in 5s..."
         sleep 5
 
-        if [ $sys_exit -ne 0 ] || [ $fw_exit -ne 0 ]; then
+        if [ $sys_exit -ne 0 ]; then
             exit 1
         else
             exit 0
