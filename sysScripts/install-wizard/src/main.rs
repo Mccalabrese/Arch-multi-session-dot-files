@@ -807,29 +807,46 @@ fn build_custom_apps() {
 }
 
 /// Renames session files to enforce a specific order in Greetd/Tuigreet.
-/// 1. Niri, 2. Sway, 3. Hyprland, 4. Gnome
+/// Strategy: Move standard files (e.g. hyprland.desktop) to custom numbered files (30-hyprland.desktop).
+/// This prevents Pacman from deleting our custom config during updates while NoExtract is active.
 fn enforce_session_order() {
-    println!("   🔧 Enforcing Session Order (Niri -> Sway -> Hyprland)...");
+    println!("   🔧 Enforcing Session Order (Renaming .desktop files)...");
     
+    let sessions_dir = "/usr/share/wayland-sessions";
+    
+    // Tuple: (Original Name, Safe Custom Name, Display Name)
     let updates = vec![
-        ("niri.desktop", "1. Niri"),
-        ("sway.desktop", "2. Sway (Battery)"),
-        ("hyprland.desktop", "3. Hyprland"),
-        ("gnome.desktop", "4. Gnome"),
-        ("gnome-wayland.desktop", "4. Gnome"), // Handle Arch variation
+        ("niri.desktop", "10-niri.desktop", "1. Niri"),
+        ("sway.desktop", "20-sway.desktop", "2. Sway (Battery)"),
+        ("hyprland.desktop", "30-hyprland.desktop", "3. Hyprland"),
+        ("gnome.desktop", "40-gnome.desktop", "4. Gnome"),
+        ("gnome-wayland.desktop", "40-gnome.desktop", "4. Gnome-wayland"), // Handle Arch variation
     ];
 
-    for (file, new_name) in updates {
-        let path = format!("/usr/share/wayland-sessions/{}", file);
-        if Path::new(&path).exists() {
-            // Use sed to replace the Name= line
-            // s/^Name=.*/Name=1. Niri/
-            let sed_cmd = format!("s/^Name=.*/Name={}/", new_name);
+    for (std_name, custom_name, display_name) in updates {
+        let std_path = format!("{}/{}", sessions_dir, std_name);
+        let custom_path = format!("{}/{}", sessions_dir, custom_name);
+
+        // 1. If the standard file exists (fresh install or update), STEAL IT.
+        // We move it to the custom path so Pacman doesn't own it anymore.
+        if Path::new(&std_path).exists() {
+            println!("      Moving {} -> {}", std_name, custom_name);
             let _ = Command::new("sudo")
-                .args(["sed", "-i", &sed_cmd, &path])
+                .args(["mv", "-f", &std_path, &custom_path])
+                .status();
+        }
+
+        // 2. Patch the Name inside the CUSTOM file (if it exists)
+        if Path::new(&custom_path).exists() {
+            let sed_cmd = format!("s/^Name=.*/Name={}/", display_name);
+            let _ = Command::new("sudo")
+                .args(["sed", "-i", &sed_cmd, &custom_path])
                 .status();
         }
     }
+    
+    // 3. Cleanup: Ensure we don't have duplicates if Pacman snuck one in
+    // This isn't strictly necessary if NoExtract is working, but good for safety.
 }
 
 ///Walks through dotfiles in repo and symlinks them to home directory.
