@@ -195,7 +195,9 @@ cursor {
 binds {
 
     Mod+T hotkey-overlay-title="Open a Terminal: ghostty" { spawn "ghostty"; }
-    Mod+D hotkey-overlay-title="Run an Application: Rofi" { spawn-sh "pkill rofi || true && rofi -show drun -modi drun,filebrowser,run,window"; }
+    Mod+D hotkey-overlay-title="Run an Application: Rofi" { 
+        spawn-sh "pkill rofi || rofi -show drun -config ~/.config/rofi/config-launcher.rasi"; 
+    }
     Super+Alt+L hotkey-overlay-title="Lock the Screen: hyprlock" { spawn-sh "pidof hyprlock || hyprlock &"; }
 
     // Volume/Brightness/Mic

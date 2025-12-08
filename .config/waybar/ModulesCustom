@@ -124,7 +124,7 @@
 
 "custom/menu": {
 	"format": "  ",
-	"on-click": "pkill rofi || rofi -show drun -modi run,drun,filebrowser,window",
+	"on-click": "pkill rofi || rofi -show drun -config ~/.config/rofi/config-launcher.rasi",
 	"tooltip": true,
 	"tooltip-format": "Left Click: Rofi Menu",
 },

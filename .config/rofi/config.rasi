@@ -1,2 +1,122 @@
-@import "~/.config/rofi/0-shared-fonts.rasi"
-@theme "~/.config/rofi/themes/KooL_style-4.rasi"
+/* Synthwave TUI Theme */
+
+configuration {
+    modi:                       "drun,run,filebrowser,window";
+    show-icons:                 false; /* Default: No icons (Text TUI style) */
+    font:                       "JetBrainsMono Nerd Font SemiBold 12";
+    terminal:                   "ghostty";
+    drun-display-format:        "{name}";
+    disable-history:            false;
+    click-to-exit:              true;
+}
+
+/* --- Synthwave Palette --- */
+* {
+    /* Deep Purple Background */
+    bg-col:         #050011;
+    bg-col-light:   #100524; 
+    border-col:     #00f3ff; 
+    selected-col:   #2d1b4e;
+    blue:           #fff300; 
+    fg-col:         #Bf7AFC;
+    grey:           #786c99;
+
+    /* Variables used by sub-configs */
+    background:     @bg-col;
+    foreground:     @fg-col;
+    separatorcolor: @border-col;
+
+    background-color: @bg-col;
+    text-color:       @fg-col;
+
+    margin:     0px;
+    padding:    0px;
+    spacing:    0px;
+}
+
+window {
+    width:      600px;
+    border:     2px;
+    border-color: @border-col;
+    background-color: @bg-col;
+    anchor:     center;
+    location:   center;
+}
+
+mainbox {
+    background-color: @bg-col;
+    children: [ inputbar, message, listview ];
+}
+
+inputbar {
+    children: [ prompt, entry ];
+    background-color: @bg-col;
+    padding: 2px;
+}
+
+prompt {
+    background-color: @border-col;
+    padding: 6px;
+    text-color: @bg-col;
+    margin: 10px 0px 0px 10px;
+    font: "JetBrainsMono Nerd Font Bold 12";
+}
+
+entry {
+    padding: 6px;
+    margin: 10px 0px 0px 5px;
+    text-color: @fg-col;
+    background-color: @bg-col;
+    placeholder: "Search...";
+    placeholder-color: @grey;
+}
+
+message {
+    border: 2px 0px 0px;
+    border-color: @bg-col-light;
+    background-color: @bg-col-light;
+    padding: 8px;
+}
+
+textbox {
+    text-color: @blue; /* Neon Cyan Help Text */
+    background-color: inherit;
+    horizontal-align: 0.5;
+}
+
+listview {
+    padding: 2px 0px 0px;
+    margin: 5px 0px 0px 5px;
+    columns: 1;
+    lines: 10;
+    background-color: @bg-col;
+    border: 2px 0px 0px;
+}
+
+element {
+    padding: 5px;
+    background-color: @bg-col;
+    text-color: @fg-col;
+}
+
+/* Force icons to 0 by default so text aligns left in normal menus */
+element-icon {
+    size: 0px; 
+}
+
+element selected {
+    background-color: @selected-col;
+    text-color: @border-col;
+    border: 0px 0px 0px 3px;
+    border-color: @border-col;
+}
+
+/* Fix "Illegible Lines" by ensuring alternate rows match the bg or just slightly lighter */
+element alternate.normal {
+    background-color: @bg-col;
+    text-color:       @fg-col;
+}
+element normal.normal {
+    background-color: @bg-col;
+    text-color:       @fg-col;
+}

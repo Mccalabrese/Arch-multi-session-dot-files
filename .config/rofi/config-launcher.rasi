@@ -1,0 +1,83 @@
+/* Rofi Launcher - Sidebar Image Layout (Geometry Fix) */
+@import "~/.config/rofi/config.rasi"
+
+window {
+    width: 900px;
+    height: 500px;
+    anchor: center;
+    location: center;
+    border: 2px;
+    border-color: @border-col;
+    border-radius: 0px; 
+}
+
+mainbox {
+    orientation: horizontal;
+    /* Split window into Left Panel and Right Panel */
+    children: [ "left-panel", "listbox" ];
+    spacing: 15px;
+    padding: 15px;
+    background-color: @bg-col;
+}
+
+/* --- Left Panel Container --- */
+/* This vertical box holds the Logo at the top and empty space below */
+#left-panel {
+    orientation: vertical;
+    children: [ "logo", "spacer" ];
+    expand: false;
+    width: 200px;
+    
+    background-color: @bg-col-light;
+    border: 2px;
+    border-color: @border-col;
+    border-radius: 4px;
+    padding: 0px;
+}
+
+/* --- The Logo Widget --- */
+#logo {
+    /* Critical: Define as textbox so it renders */
+    type: "textbox";
+    content: " ";
+    
+    /* 1. Scale image to width */
+    background-image: url("logo.png", width);
+    
+    /* 2. Position it at the very top */
+    background-position: north;
+    
+    padding: 100px 20px; 
+    
+    /* Ensure it doesn't grow */
+    expand: false;
+    background-color: transparent;
+}
+
+/* --- The Spacer Widget --- */
+/* This pushes the logo to the top and eats the repeating space */
+#spacer {
+    type: "textbox";
+    content: " ";
+    expand: true;
+    background-color: transparent;
+}
+
+/* --- Right Panel: The Menu --- */
+#listbox {
+    orientation: vertical;
+    children: [ "inputbar", "listview" ];
+    background-color: transparent;
+    spacing: 10px;
+    expand: true;
+}
+
+listview {
+    margin: 0px;
+    border: 0px;
+    padding: 0px;
+}
+inputbar {
+    margin: 0px;
+    border-radius: 4px;
+}

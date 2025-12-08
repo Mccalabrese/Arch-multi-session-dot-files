@@ -1,66 +1,71 @@
-@import "~/.config/rofi/config.rasi"  
+@import "~/.config/rofi/config.rasi"
 
-/* ---- Configuration ---- */ 
 configuration {
-  modi: "drun";
+    modi: "drun";
+    show-icons: true; 
 }
 
 window {
-  width: 75%;
-  height: inherit;
+    width: 80%;
+    /* Increase height slightly to ensure 2nd row fits */
+    height: 59%;
+    anchor: center;
+    location: center;
 }
 
-/* ---- Mainbox ---- */
 mainbox {
-  children:
-    [ "inputbar", "listview"];
+    children: [ "inputbar", "listview"];
+    padding: 10px;
 }
 
 entry {
-  expand: true;
-  placeholder: " 🎞️ Search / Choose Wallpaper";
-  horizontal-align: 0.5;
-  horizontal-align: 0.5;
+    expand: true;
+    placeholder: " 🎞️ Search / Choose Wallpaper";
+    horizontal-align: 0.5;
 }
 
-/* ---- Listview ---- */
 listview {
-  columns: 6;
-  lines: 2;
-  spacing: 20px;
-  padding: 10px;
-  columns: 6;
-  lines: 2;
-  flow: horizontal;
-  fixed-width: true;
-  fixed-height: true;
-  cycle: true;
+    columns: 6;
+    lines: 2;
+    spacing: 15px;
+    
+    flow: horizontal;
+    fixed-height: false;
+    fixed-columns: true;
+    
+    cycle: true;
 }
 
-/* ---- Element ---- */
 element {
-  orientation: vertical;
-  padding: 0px;
-  spacing: 0px;
-  border-radius: 10px;
-  padding: 0px;
-  margin: 0px;
-}
-
-element selected.normal {
-  background-color: transparent;
+    orientation: vertical;
+    padding: 5px;
+    spacing: 2px;
+    border-radius: 6px;
+    background-color: transparent;
+    border: 0px;
 }
 
 element-icon {
-    text-color:                  inherit;
-    size:                        10%;
-    margin:                      -30px;
-    cursor:                      inherit;
+    /* Slightly smaller to guarantee fit */
+    size: 180px; 
+    horizontal-align: 0.5;
+    vertical-align: 0.5;
+    background-color: transparent;
+    cursor: inherit;
+    border: 0px;
 }
 
 element-text {
-  vertical-align: 0.5;
-  horizontal-align: 0.5;
-  padding: 6px;
-  margin: 6px;
+    vertical-align: 0.5;
+    horizontal-align: 0.5;
+    padding: 4px;
+    background-color: transparent;
+    text-color: @foreground;
+}
+
+element selected {
+    background-color: @selected-col; 
+    border: 2px solid;
+    border-color: @border-col;
+    text-color: @blue;
 }
